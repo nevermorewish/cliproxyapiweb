@@ -85,7 +85,9 @@ export default function ApiKeysPage() {
     setCreating(true);
 
     try {
-      const generatedKey = crypto.randomUUID();
+      const randomBytes = new Uint8Array(32);
+      crypto.getRandomValues(randomBytes);
+      const generatedKey = `sk-${Array.from(randomBytes).map((b) => b.toString(16).padStart(2, "0")).join("")}`;
       const nextKeys = [...apiKeys, generatedKey];
       const res = await fetch("/api/management/api-keys", {
         method: "PUT",

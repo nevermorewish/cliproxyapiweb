@@ -368,10 +368,9 @@ export function buildAvailableModels(
   return models;
 }
 
-export interface McpEntry {
-  name: string;
-  command: string;
-}
+export type McpEntry =
+  | { name: string; type: "stdio"; command: string; args?: string[] }
+  | { name: string; type: "http"; url: string };
 
 export interface LspEntry {
   language: string;
@@ -435,11 +434,18 @@ export function generateConfigJson(
   if (options?.mcps && options.mcps.length > 0) {
     const mcpServers: Record<string, Record<string, unknown>> = {};
     for (const mcp of options.mcps) {
-      const commandArray = mcp.command.trim().split(/\s+/);
-      mcpServers[mcp.name] = {
-        type: "local",
-        command: commandArray,
-      };
+      if (mcp.type === "http") {
+        mcpServers[mcp.name] = {
+          type: "http",
+          url: mcp.url,
+        };
+      } else if (mcp.type === "stdio") {
+        const args = mcp.args ?? [];
+        mcpServers[mcp.name] = {
+          command: mcp.command,
+          ...(args.length > 0 && { args }),
+        };
+      }
     }
     configObj.mcp = mcpServers;
   }
