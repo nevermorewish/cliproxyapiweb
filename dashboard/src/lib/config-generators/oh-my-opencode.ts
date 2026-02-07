@@ -401,5 +401,10 @@ export function buildOhMyOpenCodeConfig(
   // Git master — merge with defaults
   config.git_master = { commit_footer: false, include_co_authored_by: false, ...overrides?.git_master };
 
+  // LSP — only if configured
+  if (overrides?.lsp && Object.keys(overrides.lsp).length > 0) {
+    config.lsp = overrides.lsp;
+  }
+
   return config;
 }

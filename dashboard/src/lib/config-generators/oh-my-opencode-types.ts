@@ -40,6 +40,11 @@ export interface GitMasterConfig {
   include_co_authored_by?: boolean;
 }
 
+export interface LspEntry {
+  command: string[];
+  extensions?: string[];
+}
+
 export interface OhMyOpenCodeFullConfig {
   agents?: Record<string, string>;
   categories?: Record<string, string>;
@@ -53,6 +58,7 @@ export interface OhMyOpenCodeFullConfig {
   browser_automation_engine?: BrowserAutomationConfig;
   sisyphus_agent?: SisyphusAgentConfig;
   git_master?: GitMasterConfig;
+  lsp?: Record<string, LspEntry>;
 }
 
 // ============================================================================
@@ -373,6 +379,42 @@ export function validateFullConfig(raw: unknown): OhMyOpenCodeFullConfig {
 
     if (Object.keys(gitConfig).length > 0) {
       result.git_master = gitConfig;
+    }
+  }
+
+  // Validate lsp config
+  if (
+    obj.lsp &&
+    typeof obj.lsp === "object" &&
+    !Array.isArray(obj.lsp)
+  ) {
+    const lspObj = obj.lsp as Record<string, unknown>;
+    const lspConfig: Record<string, LspEntry> = {};
+
+    for (const [key, value] of Object.entries(lspObj)) {
+      if (!value || typeof value !== "object" || Array.isArray(value)) continue;
+      const entryObj = value as Record<string, unknown>;
+
+      // Validate required command field
+      if (!Array.isArray(entryObj.command)) continue;
+      const command = entryObj.command.filter((c): c is string => typeof c === "string");
+      if (command.length === 0) continue;
+
+      const entry: LspEntry = { command };
+
+      // Validate optional extensions field
+      if (Array.isArray(entryObj.extensions)) {
+        const extensions = entryObj.extensions.filter((e): e is string => typeof e === "string");
+        if (extensions.length > 0) {
+          entry.extensions = extensions;
+        }
+      }
+
+      lspConfig[key] = entry;
+    }
+
+    if (Object.keys(lspConfig).length > 0) {
+      result.lsp = lspConfig;
     }
   }
 

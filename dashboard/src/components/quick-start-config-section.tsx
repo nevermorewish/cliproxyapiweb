@@ -89,12 +89,10 @@ export function QuickStartConfigSection({
         <CardContent>
           <div className="space-y-4">
             <p className="text-sm text-white/70">
-              OpenCode uses a <code className="px-1.5 py-0.5 rounded bg-white/10 text-orange-300 text-xs font-mono break-all">opencode.json</code> config
-              file with a Custom Provider.{" "}
               {hasSyncActive ? (
-                <span>Your config will auto-sync via the <code className="px-1.5 py-0.5 rounded bg-white/10 text-violet-300 text-xs font-mono">opencode-cliproxyapi-sync</code> plugin.</span>
+                <span>Config auto-syncs via <code className="px-1.5 py-0.5 rounded bg-white/10 text-violet-300 text-xs font-mono">opencode-cliproxyapi-sync</code> plugin.</span>
               ) : (
-                <span>Place this file at <code className="px-1.5 py-0.5 rounded bg-white/10 text-orange-300 text-xs font-mono break-all">~/.config/opencode/opencode.json</code> (global) or in your project root (per-project).</span>
+                <span>Place at <code className="px-1.5 py-0.5 rounded bg-white/10 text-orange-300 text-xs font-mono break-all">~/.config/opencode/opencode.json</code> or project root.</span>
               )}
             </p>
 
@@ -106,40 +104,23 @@ export function QuickStartConfigSection({
               excludedModels={excludedModels}
             />
 
-            <div className="flex items-start gap-2">
-              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-orange-500/20 border border-orange-400/30 text-[10px] font-bold text-orange-300">1</span>
-              <p className="text-sm text-white/70">
-                The config above is generated based on your configured providers. Add more on the{" "}
-                <a href="/dashboard/providers" className="text-violet-400 font-medium hover:text-violet-300 underline underline-offset-2 decoration-violet-400/30">
-                  Providers
-                </a>{" "}
-                page.
+            <div className="space-y-1.5 text-sm text-white/70">
+              <p className="flex items-start gap-2">
+                <span className="text-orange-300">•</span>
+                <span>Add providers via <a href="/dashboard/providers" className="text-violet-400 font-medium hover:text-violet-300 underline underline-offset-2 decoration-violet-400/30">Providers</a></span>
               </p>
-            </div>
-
-            <div className="flex items-start gap-2">
-              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-orange-500/20 border border-orange-400/30 text-[10px] font-bold text-orange-300">2</span>
-              <p className="text-sm text-white/70">
-                Set your default model with the <code className="px-1.5 py-0.5 rounded bg-white/10 text-orange-300 text-xs font-mono break-all">&quot;model&quot;</code> field.
-                Format: <code className="px-1.5 py-0.5 rounded bg-white/10 text-orange-300 text-xs font-mono break-all">cliproxyapi/model-name</code>
+              <p className="flex items-start gap-2">
+                <span className="text-orange-300">•</span>
+                <span>Set default model: <code className="px-1.5 py-0.5 rounded bg-white/10 text-orange-300 text-xs font-mono break-all">cliproxyapi/model-name</code></span>
               </p>
             </div>
            </div>
 
             <div className="flex items-start gap-3 mt-4 p-3 rounded-lg bg-white/5 border border-white/10">
-              <span className="text-lg mt-0.5">💡</span>
-              <div className="flex-1 text-sm text-white/70">
-                <span>Tip: Auto-sync your configs! Generate a sync token in </span>
-                <a 
-                  href="/dashboard/settings" 
-                  className="text-violet-400 font-medium hover:text-violet-300 underline underline-offset-2 decoration-violet-400/30"
-                >
-                  Settings → Config Sync
-                </a>
-                <span>, then install the </span>
-                <code className="px-1.5 py-0.5 rounded bg-white/10 text-violet-300 text-xs font-mono">opencode-cliproxyapi-sync</code>
-                <span> plugin.</span>
-              </div>
+              <span className="text-lg">💡</span>
+              <p className="text-sm text-white/70">
+                Auto-sync: Get token in <a href="/dashboard/settings" className="text-violet-400 font-medium hover:text-violet-300 underline underline-offset-2 decoration-violet-400/30">Settings</a>, install <code className="px-1.5 py-0.5 rounded bg-white/10 text-violet-300 text-xs font-mono">opencode-cliproxyapi-sync</code>
+              </p>
             </div>
          </CardContent>
        </Card>

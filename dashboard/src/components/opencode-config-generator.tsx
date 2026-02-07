@@ -8,7 +8,6 @@ import {
   type ConfigData,
   type ModelsDevData,
   type McpEntry,
-  type LspEntry,
   buildAvailableModels,
   generateConfigJson,
 } from "@/lib/config-generators/opencode";
@@ -45,12 +44,9 @@ export function OpenCodeConfigGenerator({ apiKeys, config, oauthAccounts, models
    const [isModelsExpanded, setIsModelsExpanded] = useState(false);
    const [plugins, setPlugins] = useState<string[]>(DEFAULT_PLUGINS);
    const [pluginInput, setPluginInput] = useState("");
-   const [mcps, setMcps] = useState<McpEntry[]>([]);
-   const [mcpName, setMcpName] = useState("");
-   const [mcpCommand, setMcpCommand] = useState("");
-   const [lsps, setLsps] = useState<LspEntry[]>([]);
-   const [lspLanguage, setLspLanguage] = useState("");
-   const [lspCommand, setLspCommand] = useState("");
+  const [mcps, setMcps] = useState<McpEntry[]>([]);
+  const [mcpName, setMcpName] = useState("");
+  const [mcpCommand, setMcpCommand] = useState("");
 
   const allModels = buildAvailableModels(config, oauthAccounts, modelsDevData);
   const availableModels = excludedModels
@@ -69,7 +65,6 @@ export function OpenCodeConfigGenerator({ apiKeys, config, oauthAccounts, models
   const configJson = generateConfigJson(activeKey, availableModels, {
     plugins,
     mcps,
-    lsps,
   });
 
   const handleAddPlugin = () => {
@@ -96,20 +91,6 @@ export function OpenCodeConfigGenerator({ apiKeys, config, oauthAccounts, models
 
   const handleRemoveMcp = (name: string) => {
     setMcps(mcps.filter((m) => m.name !== name));
-  };
-
-  const handleAddLsp = () => {
-    const trimmedLanguage = lspLanguage.trim();
-    const trimmedCommand = lspCommand.trim();
-    if (trimmedLanguage && trimmedCommand && !lsps.some((l) => l.language === trimmedLanguage)) {
-      setLsps([...lsps, { language: trimmedLanguage, command: trimmedCommand }]);
-      setLspLanguage("");
-      setLspCommand("");
-    }
-  };
-
-  const handleRemoveLsp = (language: string) => {
-    setLsps(lsps.filter((l) => l.language !== language));
   };
 
   const handleDownload = () => {
@@ -275,124 +256,65 @@ export function OpenCodeConfigGenerator({ apiKeys, config, oauthAccounts, models
            </div>
          </div>
 
-         <div className="space-y-2">
-           <label htmlFor="mcp-name-input" className="text-xs font-medium text-white/50 uppercase tracking-wider">
-             MCP Servers
-           </label>
-           <div className="flex gap-2">
-             <input
-               id="mcp-name-input"
-               type="text"
-               value={mcpName}
-               onChange={(e) => setMcpName(e.target.value)}
-               placeholder="server-name"
-               className="flex-1 backdrop-blur-xl bg-white/8 border border-white/15 rounded-lg px-3 py-2 text-sm text-white/90 font-mono placeholder:text-white/30 focus:border-purple-400/50 focus:bg-white/12 focus:outline-none transition-all"
-             />
-             <input
-               type="text"
-               value={mcpCommand}
-               onChange={(e) => setMcpCommand(e.target.value)}
-               onKeyDown={(e) => e.key === "Enter" && handleAddMcp()}
-               placeholder="command"
-               className="flex-1 backdrop-blur-xl bg-white/8 border border-white/15 rounded-lg px-3 py-2 text-sm text-white/90 font-mono placeholder:text-white/30 focus:border-purple-400/50 focus:bg-white/12 focus:outline-none transition-all"
-             />
-             <button
-               type="button"
-               onClick={handleAddMcp}
-               className="px-4 py-2 rounded-lg bg-blue-500/20 border border-blue-400/30 text-blue-300 text-sm font-medium hover:bg-blue-500/30 hover:border-blue-400/50 transition-all"
-             >
-               Add
-             </button>
-           </div>
-           {mcps.length > 0 && (
-             <div className="space-y-1.5">
-               {mcps.map((mcp) => (
-                 <div
-                   key={mcp.name}
-                   className="flex items-center justify-between px-3 py-2 rounded-lg bg-blue-500/10 border border-blue-400/20"
-                 >
-                   <div className="flex items-center gap-2 text-xs font-mono">
-                     <span className="text-blue-300">{mcp.name}</span>
-                     <span className="text-white/30">→</span>
-                     <span className="text-white/60">{mcp.command}</span>
-                   </div>
-                   <button
-                     type="button"
-                     onClick={() => handleRemoveMcp(mcp.name)}
-                     className="text-white/40 hover:text-red-400 transition-colors"
-                     aria-label={`Remove ${mcp.name}`}
-                   >
-                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                       <title>Remove</title>
-                       <line x1="18" y1="6" x2="6" y2="18" />
-                       <line x1="6" y1="6" x2="18" y2="18" />
-                     </svg>
-                   </button>
-                 </div>
-               ))}
-             </div>
-           )}
-         </div>
-
-         <div className="space-y-2">
-           <label htmlFor="lsp-language-input" className="text-xs font-medium text-white/50 uppercase tracking-wider">
-             LSP Servers
-           </label>
-           <div className="flex gap-2">
-             <input
-               id="lsp-language-input"
-               type="text"
-               value={lspLanguage}
-               onChange={(e) => setLspLanguage(e.target.value)}
-               placeholder="language"
-               className="flex-1 backdrop-blur-xl bg-white/8 border border-white/15 rounded-lg px-3 py-2 text-sm text-white/90 font-mono placeholder:text-white/30 focus:border-purple-400/50 focus:bg-white/12 focus:outline-none transition-all"
-             />
-             <input
-               type="text"
-               value={lspCommand}
-               onChange={(e) => setLspCommand(e.target.value)}
-               onKeyDown={(e) => e.key === "Enter" && handleAddLsp()}
-               placeholder="command"
-               className="flex-1 backdrop-blur-xl bg-white/8 border border-white/15 rounded-lg px-3 py-2 text-sm text-white/90 font-mono placeholder:text-white/30 focus:border-purple-400/50 focus:bg-white/12 focus:outline-none transition-all"
-             />
-             <button
-               type="button"
-               onClick={handleAddLsp}
-               className="px-4 py-2 rounded-lg bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-sm font-medium hover:bg-emerald-500/30 hover:border-emerald-400/50 transition-all"
-             >
-               Add
-             </button>
-           </div>
-           {lsps.length > 0 && (
-             <div className="space-y-1.5">
-               {lsps.map((lsp) => (
-                 <div
-                   key={lsp.language}
-                   className="flex items-center justify-between px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-400/20"
-                 >
-                   <div className="flex items-center gap-2 text-xs font-mono">
-                     <span className="text-emerald-300">{lsp.language}</span>
-                     <span className="text-white/30">→</span>
-                     <span className="text-white/60">{lsp.command}</span>
-                   </div>
-                   <button
-                     type="button"
-                     onClick={() => handleRemoveLsp(lsp.language)}
-                     className="text-white/40 hover:text-red-400 transition-colors"
-                     aria-label={`Remove ${lsp.language}`}
-                   >
-                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                       <title>Remove</title>
-                       <line x1="18" y1="6" x2="6" y2="18" />
-                       <line x1="6" y1="6" x2="18" y2="18" />
-                     </svg>
-                   </button>
-                 </div>
-               ))}
-             </div>
-           )}
-         </div>
-       </div>
+          <div className="space-y-2">
+            <label htmlFor="mcp-name-input" className="text-xs font-medium text-white/50 uppercase tracking-wider">
+              MCP Servers
+            </label>
+            <div className="flex gap-2">
+              <input
+                id="mcp-name-input"
+                type="text"
+                value={mcpName}
+                onChange={(e) => setMcpName(e.target.value)}
+                placeholder="server-name"
+                className="flex-1 backdrop-blur-xl bg-white/8 border border-white/15 rounded-lg px-3 py-2 text-sm text-white/90 font-mono placeholder:text-white/30 focus:border-purple-400/50 focus:bg-white/12 focus:outline-none transition-all"
+              />
+              <input
+                type="text"
+                value={mcpCommand}
+                onChange={(e) => setMcpCommand(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleAddMcp()}
+                placeholder="command"
+                className="flex-1 backdrop-blur-xl bg-white/8 border border-white/15 rounded-lg px-3 py-2 text-sm text-white/90 font-mono placeholder:text-white/30 focus:border-purple-400/50 focus:bg-white/12 focus:outline-none transition-all"
+              />
+              <button
+                type="button"
+                onClick={handleAddMcp}
+                className="px-4 py-2 rounded-lg bg-blue-500/20 border border-blue-400/30 text-blue-300 text-sm font-medium hover:bg-blue-500/30 hover:border-blue-400/50 transition-all"
+              >
+                Add
+              </button>
+            </div>
+            {mcps.length > 0 && (
+              <div className="space-y-1.5">
+                {mcps.map((mcp) => (
+                  <div
+                    key={mcp.name}
+                    className="flex items-center justify-between px-3 py-2 rounded-lg bg-blue-500/10 border border-blue-400/20"
+                  >
+                    <div className="flex items-center gap-2 text-xs font-mono">
+                      <span className="text-blue-300">{mcp.name}</span>
+                      <span className="text-white/30">→</span>
+                      <span className="text-white/60">{mcp.command}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveMcp(mcp.name)}
+                      className="text-white/40 hover:text-red-400 transition-colors"
+                      aria-label={`Remove ${mcp.name}`}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <title>Remove</title>
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
 
        <button
          type="button"

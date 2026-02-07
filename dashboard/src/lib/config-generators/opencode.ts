@@ -376,6 +376,7 @@ export interface McpEntry {
 export interface LspEntry {
   language: string;
   command: string;
+  extensions?: string[];
 }
 
 export interface GenerateConfigOptions {
@@ -447,9 +448,13 @@ export function generateConfigJson(
     const lspServers: Record<string, Record<string, unknown>> = {};
     for (const lsp of options.lsps) {
       const commandArray = lsp.command.trim().split(/\s+/);
-      lspServers[lsp.language] = {
+      const lspEntry: Record<string, unknown> = {
         command: commandArray,
       };
+      if (lsp.extensions && lsp.extensions.length > 0) {
+        lspEntry.extensions = lsp.extensions;
+      }
+      lspServers[lsp.language] = lspEntry;
     }
     configObj.lsp = lspServers;
   }
