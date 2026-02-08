@@ -4,6 +4,7 @@ import { validateOrigin } from "@/lib/auth/origin";
 import { generateApiKey } from "@/lib/api-keys/generate";
 import { syncKeysToCliProxyApi } from "@/lib/api-keys/sync";
 import { prisma } from "@/lib/db";
+import { checkRateLimitWithPreset } from "@/lib/auth/rate-limit";
 
 interface ApiKeyResponse {
   id: string;
@@ -79,6 +80,17 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const rateLimit = checkRateLimitWithPreset(request, "api-keys", "API_KEYS");
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many API key creation requests. Try again later." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(rateLimit.retryAfterSeconds) },
+      }
+    );
+  }
+
   const session = await verifySession();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

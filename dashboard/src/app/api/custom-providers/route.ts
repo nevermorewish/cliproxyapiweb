@@ -4,6 +4,7 @@ import { validateOrigin } from "@/lib/auth/origin";
 import { prisma } from "@/lib/db";
 import { hashProviderKey } from "@/lib/providers/hash";
 import { z } from "zod";
+import { checkRateLimitWithPreset } from "@/lib/auth/rate-limit";
 
 const CreateCustomProviderSchema = z.object({
   name: z.string().min(1).max(100),
@@ -58,6 +59,17 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const rateLimit = checkRateLimitWithPreset(request, "custom-providers", "CUSTOM_PROVIDERS");
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many custom provider creation requests. Try again later." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(rateLimit.retryAfterSeconds) },
+      }
+    );
+  }
+
   const session = await verifySession();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

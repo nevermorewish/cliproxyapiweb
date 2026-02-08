@@ -5,9 +5,21 @@ import { getUser } from "@/lib/auth/dal";
 import { verifyPassword, hashPassword } from "@/lib/auth/password";
 import { prisma } from "@/lib/db";
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "@/lib/auth/validation";
+import { checkRateLimitWithPreset } from "@/lib/auth/rate-limit";
 
 export async function POST(request: NextRequest) {
   try {
+    const rateLimit = checkRateLimitWithPreset(request, "change-password", "CHANGE_PASSWORD");
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Too many password change attempts. Try again later." },
+        {
+          status: 429,
+          headers: { "Retry-After": String(rateLimit.retryAfterSeconds) },
+        }
+      );
+    }
+
     const session = await verifySession();
 
     if (!session) {

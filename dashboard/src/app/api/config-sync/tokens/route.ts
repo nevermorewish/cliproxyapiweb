@@ -3,8 +3,20 @@ import { verifySession } from "@/lib/auth/session";
 import { validateOrigin } from "@/lib/auth/origin";
 import { generateSyncToken } from "@/lib/auth/sync-token";
 import { prisma } from "@/lib/db";
+import { checkRateLimitWithPreset } from "@/lib/auth/rate-limit";
 
 export async function POST(request: NextRequest) {
+  const rateLimit = checkRateLimitWithPreset(request, "config-sync-tokens", "CONFIG_SYNC_TOKENS");
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many token creation requests. Try again later." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(rateLimit.retryAfterSeconds) },
+      }
+    );
+  }
+
   const session = await verifySession();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
