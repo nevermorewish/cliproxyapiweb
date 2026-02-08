@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { verifySession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 
@@ -142,7 +142,7 @@ async function requireAdmin(): Promise<{ userId: string; username: string } | Ne
   return { userId: session.userId, username: session.username };
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const authResult = await requireAdmin();
   if (authResult instanceof NextResponse) {
     return authResult;
@@ -157,7 +157,13 @@ export async function GET() {
   }
 
   try {
-    const [usageResponse, allKeys] = await Promise.all([
+    const { searchParams } = new URL(request.url);
+    
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "50", 10) || 50));
+    const skip = (page - 1) * limit;
+
+    const [usageResponse, allKeys, totalKeys] = await Promise.all([
       fetch(`${CLIPROXYAPI_MANAGEMENT_URL}/usage`, {
         method: "GET",
         headers: {
@@ -170,7 +176,10 @@ export async function GET() {
           name: true,
           user: { select: { username: true } },
         },
+        skip,
+        take: limit,
       }),
+      prisma.userApiKey.count(),
     ]);
 
     if (!usageResponse.ok) {
@@ -209,7 +218,15 @@ export async function GET() {
       apis: sanitizedApis,
     };
 
-    return NextResponse.json(sanitizedResponse);
+    return NextResponse.json({
+      data: sanitizedResponse,
+      pagination: {
+        page,
+        limit,
+        total: totalKeys,
+        hasMore: skip + allKeys.length < totalKeys,
+      },
+    });
   } catch (error) {
     console.error("Failed to fetch usage data:", error);
     return NextResponse.json(
