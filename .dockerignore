@@ -1,0 +1,88 @@
+# Version control
+.git
+.gitignore
+
+# Infrastructure (not needed for dashboard build)
+infrastructure/
+perplexity-sidecar/
+scripts/
+docs/
+.github/
+.reports/
+
+# Root-level files not needed
+install.sh
+rebuild.sh
+setup-local.sh
+setup-local.ps1
+docker-compose*.yml
+config.local.yaml
+*.md
+LICENSE
+
+# Dependencies (rebuilt inside container)
+dashboard/node_modules
+node_modules
+
+# Build output (rebuilt inside container)
+dashboard/.next
+dashboard/out
+dashboard/build
+dashboard/dist
+
+# Environment files (NEVER send secrets to build context)
+.env
+.env.*
+dashboard/.env
+dashboard/.env.*
+dashboard/.env.local
+dashboard/.env.development
+dashboard/.env.production
+
+# Generated files (regenerated during build)
+dashboard/src/generated/
+
+# Development files
+dashboard/dev-local.sh
+dashboard/dev-local.ps1
+dashboard/coverage/
+dashboard/*.lcov
+dashboard/.nyc_output
+
+# Documentation
+dashboard/docs/
+
+# Editor/IDE
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.swp
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# TypeScript incremental
+*.tsbuildinfo
+
+# Docker files (not needed inside build)
+dashboard/Dockerfile
+dashboard/docker-compose*.yml
+
+# Agent/skill files
+.agents/
+.claude/
+.trae/
+.gemini/
+AGENTS.md
