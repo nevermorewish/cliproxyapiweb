@@ -263,7 +263,6 @@ export function OAuthCredentialList({
                       onClick={() => setEditingProxyAccount(
                         editingProxyAccount === account.accountName ? null : account.accountName
                       )}
-                      title="设置代理 URL"
                     >
                       {account.proxyUrl ? "✏️ Proxy" : "🌐 Proxy"}
                     </Button>
