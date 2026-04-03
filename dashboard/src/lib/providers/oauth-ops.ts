@@ -296,6 +296,7 @@ export async function listOAuthWithOwnership(
       status?: string;
       status_message?: string;
       unavailable?: boolean;
+      proxy_url?: string;
     }>;
 
     const accountNames = authFiles.map((file) => file.name);
@@ -323,6 +324,7 @@ export async function listOAuthWithOwnership(
          status: file.status || "active",
          statusMessage: file.status_message || null,
          unavailable: file.unavailable ?? false,
+         proxyUrl: canSeeDetails ? file.proxy_url || null : null,
        };
      });
 

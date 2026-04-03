@@ -85,6 +85,7 @@ export const API_ENDPOINTS = {
 
     // Auth files
     AUTH_FILES: "/api/management/auth-files",
+    AUTH_FILES_FIELDS: "/api/management/auth-files/fields",
 
     // Providers
     OPENAI_COMPATIBILITY: "/api/management/openai-compatibility",

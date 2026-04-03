@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { OwnerBadge, type CurrentUserLike } from "@/components/providers/api-key-section";
 
 interface OAuthAccountWithOwnership {
@@ -14,6 +16,7 @@ interface OAuthAccountWithOwnership {
   status: "active" | "error" | "disabled" | string;
   statusMessage: string | null;
   unavailable: boolean;
+  proxyUrl: string | null;
 }
 
 interface OAuthCredentialListProps {
@@ -25,6 +28,7 @@ interface OAuthCredentialListProps {
   onToggle: (accountId: string, currentlyDisabled: boolean) => void;
   onDelete: (accountId: string) => void;
   onClaim: (accountName: string) => void;
+  onUpdateProxyUrl: (accountName: string, proxyUrl: string) => Promise<boolean>;
 }
 
 function parseStatusMessage(raw: string | null): string | null {
@@ -85,6 +89,111 @@ function OAuthStatusBadge({
   return null;
 }
 
+function ProxyUrlBadge({ proxyUrl }: { proxyUrl: string | null }) {
+  if (!proxyUrl) return null;
+  // Mask credentials in the display: http://user:pass@host:port → http://***@host:port
+  let masked = proxyUrl;
+  try {
+    const url = new URL(proxyUrl);
+    if (url.username || url.password) {
+      masked = `${url.protocol}//***@${url.host}`;
+    }
+  } catch {
+    // If URL parsing fails, just show the raw value truncated
+    masked = proxyUrl.length > 30 ? `${proxyUrl.slice(0, 30)}…` : proxyUrl;
+  }
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-full bg-violet-500/15 px-2 py-0.5 text-[10px] font-medium text-violet-400"
+      title={`Proxy: ${masked}`}
+    >
+      <svg className="size-2.5" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 1.5a5.5 5.5 0 0 1 5.5 5.5 5.5 5.5 0 0 1-5.5 5.5A5.5 5.5 0 0 1 2.5 8 5.5 5.5 0 0 1 8 2.5zM7 5v3.5l3 1.5.5-1L8 7.75V5H7z"/></svg>
+      {masked}
+    </span>
+  );
+}
+
+function ProxyUrlEditor({
+  accountName,
+  currentProxyUrl,
+  onSave,
+  onClose,
+}: {
+  accountName: string;
+  currentProxyUrl: string | null;
+  onSave: (accountName: string, proxyUrl: string) => Promise<boolean>;
+  onClose: () => void;
+}) {
+  const [value, setValue] = useState(currentProxyUrl || "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSave = async () => {
+    // Basic URL validation if value is non-empty
+    if (value.trim()) {
+      try {
+        const url = new URL(value.trim());
+        if (!["http:", "https:", "socks5:", "socks4:"].includes(url.protocol)) {
+          setError("支持的协议: http, https, socks5, socks4");
+          return;
+        }
+      } catch {
+        setError("无效的 URL 格式。示例: http://user:pass@ip:port");
+        return;
+      }
+    }
+
+    setSaving(true);
+    setError(null);
+    const ok = await onSave(accountName, value.trim());
+    setSaving(false);
+    if (ok) {
+      onClose();
+    } else {
+      setError("保存失败，请重试");
+    }
+  };
+
+  return (
+    <div className="mt-2 space-y-2 rounded-md border border-slate-600/50 bg-slate-800/60 p-3">
+      <label className="block text-xs font-medium text-slate-300">
+        代理 URL (Proxy URL)
+      </label>
+      <Input
+        type="text"
+        name="proxyUrl"
+        value={value}
+        onChange={setValue}
+        placeholder="http://user:pass@68.64.154.69:30000"
+        disabled={saving}
+        className="font-mono text-xs"
+      />
+      <p className="text-[10px] text-slate-500">
+        格式: http://用户名:密码@IP:端口 或 socks5://用户名:密码@IP:端口。留空则清除代理。
+      </p>
+      {error && <p className="text-xs text-red-400">{error}</p>}
+      <div className="flex items-center gap-2">
+        <Button
+          variant="primary"
+          className="px-3 py-1 text-xs"
+          disabled={saving}
+          onClick={handleSave}
+        >
+          {saving ? "保存中..." : "保存"}
+        </Button>
+        <Button
+          variant="secondary"
+          className="px-3 py-1 text-xs"
+          disabled={saving}
+          onClick={onClose}
+        >
+          取消
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export type { OAuthAccountWithOwnership };
 
 export function OAuthCredentialList({
@@ -96,7 +205,10 @@ export function OAuthCredentialList({
   onToggle,
   onDelete,
   onClaim,
+  onUpdateProxyUrl,
 }: OAuthCredentialListProps) {
+  const [editingProxyAccount, setEditingProxyAccount] = useState<string | null>(null);
+
   return (
     <>
       <div>
@@ -126,6 +238,7 @@ export function OAuthCredentialList({
                       <OwnerBadge ownerUsername={account.ownerUsername} isOwn={account.isOwn} />
                     )}
                     <OAuthStatusBadge status={account.status} statusMessage={account.statusMessage} unavailable={account.unavailable} />
+                    <ProxyUrlBadge proxyUrl={account.proxyUrl} />
                   </div>
                   {account.accountEmail && (
                     <p className="truncate text-xs text-slate-300">{account.accountEmail}</p>
@@ -147,6 +260,16 @@ export function OAuthCredentialList({
                     <Button
                       variant="secondary"
                       className="px-2.5 py-1 text-xs"
+                      onClick={() => setEditingProxyAccount(
+                        editingProxyAccount === account.accountName ? null : account.accountName
+                      )}
+                      title="设置代理 URL"
+                    >
+                      {account.proxyUrl ? "✏️ Proxy" : "🌐 Proxy"}
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      className="px-2.5 py-1 text-xs"
                       disabled={togglingAccountId === account.id}
                       onClick={() => onToggle(account.id, account.status === "disabled")}
                     >
@@ -162,6 +285,14 @@ export function OAuthCredentialList({
                   </div>
                 )}
               </div>
+              {editingProxyAccount === account.accountName && (
+                <ProxyUrlEditor
+                  accountName={account.accountName}
+                  currentProxyUrl={account.proxyUrl}
+                  onSave={onUpdateProxyUrl}
+                  onClose={() => setEditingProxyAccount(null)}
+                />
+              )}
             </div>
           ))}
         </div>

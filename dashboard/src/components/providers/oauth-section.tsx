@@ -774,6 +774,27 @@ export function OAuthSection({
     oauthModalStatus === MODAL_STATUS.SUCCESS ||
     callbackValidation !== CALLBACK_VALIDATION.VALID;
 
+  const updateProxyUrl = async (accountName: string, proxyUrl: string): Promise<boolean> => {
+    try {
+      const res = await fetch(API_ENDPOINTS.MANAGEMENT.AUTH_FILES_FIELDS, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: accountName, proxy_url: proxyUrl }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        showToast(extractApiError(data, "Failed to update proxy URL"), "error");
+        return false;
+      }
+      showToast(proxyUrl ? "代理 URL 已设置" : "代理 URL 已清除", "success");
+      await loadAccounts();
+      return true;
+    } catch {
+      showToast("Network error", "error");
+      return false;
+    }
+  };
+
   const importProviderName = importProviderId
     ? getOAuthProviderById(importProviderId)?.name || importProviderId
     : "";
@@ -799,6 +820,7 @@ export function OAuthSection({
             onToggle={toggleOAuthAccount}
             onDelete={confirmDeleteOAuth}
             onClaim={claimOAuthAccount}
+            onUpdateProxyUrl={updateProxyUrl}
           />
 
           <div className="rounded-sm border border-slate-700/70 bg-slate-900/30 p-3 text-xs text-slate-400">

@@ -100,6 +100,7 @@ export interface OAuthAccountWithOwnership {
   status: "active" | "error" | "disabled" | string;
   statusMessage: string | null;
   unavailable: boolean;
+  proxyUrl: string | null;
 }
 
 export interface ListOAuthResult {
