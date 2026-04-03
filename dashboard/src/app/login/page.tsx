@@ -42,7 +42,7 @@ export default function LoginPage() {
 
       if (!res.ok) {
         const data = await res.json();
-        setError(data.error?.message ?? data.error ?? "Login failed");
+        setError(data.error?.message ?? data.error ?? "登录验证失败");
         setLoading(false);
         return;
       }
@@ -50,7 +50,7 @@ export default function LoginPage() {
       router.push("/dashboard");
       router.refresh();
     } catch {
-      setError("Network error. Please try again.");
+      setError("网络异常，请稍后重试。");
       setLoading(false);
     }
   };
@@ -72,15 +72,13 @@ export default function LoginPage() {
           <h1 className="text-2xl font-semibold tracking-tight text-white">
             CLIProxyAPI
           </h1>
-          <p className="mt-1 text-sm text-white/50">Sign in to your dashboard</p>
+          <p className="mt-1 text-sm text-white/50">登录进入你的控制面板</p>
         </div>
 
          <div className="glass-card rounded-xl p-4 sm:p-6 shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="username" className="mb-2 block text-xs font-medium text-white/70 uppercase tracking-wider">
-                Username
-              </label>
+                用户账号
               <Input
                 type="text"
                 name="username"
@@ -92,9 +90,7 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label htmlFor="password" className="mb-2 block text-xs font-medium text-white/70 uppercase tracking-wider">
-                Password
-              </label>
+                登录密码
               <Input
                 type="password"
                 name="password"
@@ -112,13 +108,13 @@ export default function LoginPage() {
             )}
 
             <Button type="submit" disabled={loading} className="w-full">
-              {loading ? "Signing in..." : "Sign in"}
+              {loading ? "正在处理登录..." : "安全登录"}
             </Button>
           </form>
         </div>
 
         <p className="mt-6 text-center text-xs text-white/30">
-          CLIProxyAPI Management Dashboard
+          CLIProxyAPI 管理控制台
         </p>
       </div>
     </div>

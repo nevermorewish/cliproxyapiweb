@@ -18,14 +18,10 @@ export default function SetupPage() {
     e.preventDefault();
     setError("");
 
-    if (password !== confirmPassword) {
-      setError("Passwords do not match");
-      return;
+      setError("输入的两次密码不一致");
     }
 
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters");
-      return;
+      setError("密码至少需要 8 个字符");
     }
 
     setLoading(true);
@@ -42,7 +38,7 @@ export default function SetupPage() {
       if (!res.ok) {
         const errorMsg = typeof data.error === "string" 
           ? data.error 
-          : (data.error?.message ?? "Setup failed");
+          : (data.error?.message ?? "系统初始化失败");
         setError(errorMsg);
         setLoading(false);
         return;
@@ -52,7 +48,7 @@ export default function SetupPage() {
       router.push("/dashboard");
       router.refresh();
     } catch {
-      setError("Network error. Please try again.");
+      setError("网络异常，请重试。");
       setLoading(false);
     }
   };
@@ -71,19 +67,17 @@ export default function SetupPage() {
           <h1 className="text-2xl font-semibold tracking-tight text-white">
             CLIProxyAPI
           </h1>
-          <p className="mt-1 text-sm text-white/50">First-time setup</p>
+          <p className="mt-1 text-sm text-white/50">系统首次初始化配置</p>
         </div>
 
          <div className="glass-card rounded-xl p-6 shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
           <div className="mb-4 rounded-xl bg-amber-500/15 border border-amber-400/25 p-3 text-sm text-amber-200">
-            Create your administrator account. Keep these credentials secure.
+            创建您的初始管理员账户。请务必妥善保管好此凭证信息。
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="username" className="mb-2 block text-xs font-medium text-white/70 uppercase tracking-wider">
-                Username
-              </label>
+                管理员账号
               <Input
                 type="text"
                 name="username"
@@ -96,9 +90,7 @@ export default function SetupPage() {
             </div>
 
             <div>
-              <label htmlFor="password" className="mb-2 block text-xs font-medium text-white/70 uppercase tracking-wider">
-                Password
-              </label>
+                初始登录密码
               <Input
                 type="password"
                 name="password"
@@ -106,14 +98,12 @@ export default function SetupPage() {
                 onChange={setPassword}
                 required
                 autoComplete="new-password"
-                placeholder="Minimum 8 characters"
+                placeholder="最少需要 8 个字符"
               />
             </div>
 
             <div>
-              <label htmlFor="confirmPassword" className="mb-2 block text-xs font-medium text-white/70 uppercase tracking-wider">
-                Confirm Password
-              </label>
+                再次确认密码
               <Input
                 type="password"
                 name="confirmPassword"
@@ -131,14 +121,12 @@ export default function SetupPage() {
             )}
 
             <Button type="submit" disabled={loading} className="w-full">
-              {loading ? "Creating account..." : "Create Account"}
-            </Button>
+              {loading ? "正在处理创建..." : "确认创建账号"}
           </form>
         </div>
 
         <p className="mt-6 text-center text-xs text-white/30">
-          CLIProxyAPI Management Dashboard
-        </p>
+          CLIProxyAPI 管理系统
       </div>
     </div>
   );

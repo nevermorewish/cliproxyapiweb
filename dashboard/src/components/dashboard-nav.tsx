@@ -116,23 +116,23 @@ function IconLogs({ className }: { className?: string }) {
 }
 
 const NAV_SECTIONS = [
-  { key: "general", label: "General" },
-  { key: "access", label: "Access" },
-  { key: "admin", label: "Admin" },
+  { key: "general", label: "基础设置" },
+  { key: "access", label: "访问控制" },
+  { key: "admin", label: "系统管理" },
 ] as const;
 
 const NAV_ITEMS = [
-  { href: "/dashboard", label: "Quick Start", icon: IconPlayCircle, adminOnly: false, section: "general" },
-  { href: "/dashboard/providers", label: "Providers", icon: IconLayers, adminOnly: false, section: "general" },
-  { href: "/dashboard/usage", label: "Usage", icon: IconBarChart, adminOnly: false, section: "general" },
-  { href: "/dashboard/quota", label: "Quota", icon: IconGauge, adminOnly: false, section: "general" },
-  { href: "/dashboard/api-keys", label: "API Keys", icon: IconKey, adminOnly: false, section: "access" },
-  { href: "/dashboard/settings", label: "Settings", icon: IconSettings, adminOnly: false, section: "access" },
-  { href: "/dashboard/monitoring", label: "Monitoring", icon: IconActivity, adminOnly: true, section: "admin" },
-  { href: "/dashboard/containers", label: "Containers", icon: IconBox, adminOnly: true, section: "admin" },
-  { href: "/dashboard/config", label: "Config", icon: IconFileCode, adminOnly: true, section: "admin" },
-  { href: "/dashboard/admin/users", label: "Users", icon: IconUsers, adminOnly: true, section: "admin" },
-  { href: "/dashboard/admin/logs", label: "Logs", icon: IconLogs, adminOnly: true, section: "admin" },
+  { href: "/dashboard", label: "快速开始", icon: IconPlayCircle, adminOnly: false, section: "general" },
+  { href: "/dashboard/providers", label: "服务提供商", icon: IconLayers, adminOnly: false, section: "general" },
+  { href: "/dashboard/usage", label: "使用统计", icon: IconBarChart, adminOnly: false, section: "general" },
+  { href: "/dashboard/quota", label: "额度分析", icon: IconGauge, adminOnly: false, section: "general" },
+  { href: "/dashboard/api-keys", label: "API 密钥", icon: IconKey, adminOnly: false, section: "access" },
+  { href: "/dashboard/settings", label: "设定调整", icon: IconSettings, adminOnly: false, section: "access" },
+  { href: "/dashboard/monitoring", label: "运行监控", icon: IconActivity, adminOnly: true, section: "admin" },
+  { href: "/dashboard/containers", label: "容器守护", icon: IconBox, adminOnly: true, section: "admin" },
+  { href: "/dashboard/config", label: "源文配置", icon: IconFileCode, adminOnly: true, section: "admin" },
+  { href: "/dashboard/admin/users", label: "账号管理", icon: IconUsers, adminOnly: true, section: "admin" },
+  { href: "/dashboard/admin/logs", label: "操作日志", icon: IconLogs, adminOnly: true, section: "admin" },
 ] as const;
 
 export function DashboardNav() {

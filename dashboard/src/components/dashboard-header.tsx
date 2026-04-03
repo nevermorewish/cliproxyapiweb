@@ -65,17 +65,17 @@ export function DashboardHeader({ onUserClick, username, isAdmin, externalStatus
           {isLoading ? (
             <>
               <div className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
-              <span className="text-slate-400">Checking...</span>
+              <span className="text-slate-400">状态检测中...</span>
             </>
           ) : status?.running ? (
             <>
               <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse-dot" />
-              <span className="text-emerald-400 font-medium">All systems operational</span>
+              <span className="text-emerald-400 font-medium">系统运行正常</span>
             </>
           ) : (
             <>
               <div className="w-2.5 h-2.5 rounded-full bg-red-500" />
-              <span className="text-red-400 font-medium">System offline</span>
+              <span className="text-red-400 font-medium">系统连接离线</span>
             </>
           )}
         </div>
@@ -84,7 +84,7 @@ export function DashboardHeader({ onUserClick, username, isAdmin, externalStatus
           <>
             <div className="w-px h-4 bg-slate-700" />
             <span className="text-slate-400 text-xs">
-              Uptime: {formatUptime(status.uptime)}
+              已稳定运行: {formatUptime(status.uptime)}
             </span>
           </>
         )}
