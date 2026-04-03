@@ -114,7 +114,7 @@ services:
       start_period: 10s
 
   dashboard:
-    image: ghcr.io/itsmylife44/cliproxyapi-dashboard/dashboard:latest
+    image: crpi-dzjyl2rfnlfugj1m.cn-shanghai.personal.cr.aliyuncs.com/frogclaw/cliproxyapiweb:latest
     container_name: cliproxyapi-dashboard
     restart: unless-stopped
     networks:
