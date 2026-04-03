@@ -122,14 +122,14 @@ function getDateRange(period: DateFilter, customFrom?: string, customTo?: string
 }
 
 function getRelativeTime(isoString: string): string {
-  if (!isoString) return "Never";
+  if (!isoString) return "从未同步";
   const diff = Date.now() - new Date(isoString).getTime();
   const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return "Just now";
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 1) return "刚刚";
+  if (minutes < 60) return `${minutes}分钟前`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
+  if (hours < 24) return `${hours}小时前`;
+  return `${Math.floor(hours / 24)}天前`;
 }
 
 function getStatusColor(isoString: string): string {
@@ -169,7 +169,7 @@ export default function UsagePage() {
         const res = await fetch(`/api/usage/history?from=${from}&to=${to}`, { signal: abortController.signal });
 
         if (!res.ok) {
-          showToast("Failed to load usage data", "error");
+          showToast("加载使用数据失败", "error");
           setLoading(false);
           return;
         }
@@ -181,7 +181,7 @@ export default function UsagePage() {
         setLoading(false);
       } catch {
         if (abortController.signal.aborted) return;
-        showToast("Network error", "error");
+        showToast("网络异常", "error");
         setLoading(false);
       }
     }
@@ -231,7 +231,7 @@ export default function UsagePage() {
       const res = await fetch(`/api/usage/history?from=${from}&to=${to}`);
 
       if (!res.ok) {
-        showToast("Failed to load usage data", "error");
+        showToast("加载使用数据失败", "error");
         setLoading(false);
         return;
       }
@@ -241,7 +241,7 @@ export default function UsagePage() {
       setIsAdmin(json.isAdmin);
       setLoading(false);
     } catch {
-      showToast("Network error", "error");
+      showToast("网络异常", "error");
       setLoading(false);
     }
   };
@@ -249,21 +249,21 @@ export default function UsagePage() {
   const hasInputOutputBreakdown = usageData && (usageData.totals.inputTokens > 0 || usageData.totals.outputTokens > 0);
   const hasLatencyBreakdown = (usageData?.latencySummary?.sampleCount ?? 0) > 0;
   const collectorStatusColor = usageData ? getStatusColor(usageData.collectorStatus.lastCollectedAt) : "bg-gray-500";
-  const collectorTimeAgo = usageData ? getRelativeTime(usageData.collectorStatus.lastCollectedAt) : "Unknown";
+  const collectorTimeAgo = usageData ? getRelativeTime(usageData.collectorStatus.lastCollectedAt) : "未知";
 
   return (
     <div className="space-y-4">
       <section className="rounded-lg border border-slate-700/70 bg-slate-900/40 p-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight text-slate-100">Usage Statistics</h1>
+            <h1 className="text-xl font-semibold tracking-tight text-slate-100">使用统计</h1>
             <div className="mt-1 flex items-center gap-2">
               <div className={`h-2 w-2 rounded-full ${collectorStatusColor}`}></div>
-              <p className="text-xs text-slate-400">Last synced: {collectorTimeAgo}</p>
+              <p className="text-xs text-slate-400">上次同步: {collectorTimeAgo}</p>
             </div>
           </div>
           <Button onClick={handleRefresh} disabled={loading}>
-            Refresh
+            刷新数据
           </Button>
         </div>
       </section>
@@ -280,29 +280,29 @@ export default function UsagePage() {
 
       {loading ? (
         <div className="rounded-lg border border-slate-700/70 bg-slate-900/40 p-6 text-center text-sm text-slate-400">
-          Loading statistics...
+          正在加载统计数据...
         </div>
       ) : !usageData ? (
         <div className="rounded-md border border-rose-500/40 bg-rose-500/10 p-4 text-sm text-rose-200">
-          Unable to load usage statistics
+          无法加载使用统计数据
         </div>
       ) : (
         <>
           <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-2">
             <div className="rounded-lg border border-slate-700/70 bg-slate-900/40 px-2.5 py-2">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">Total Requests</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">请求总数</p>
               <p className="mt-0.5 text-xs font-semibold text-slate-100">{usageData.totals.totalRequests.toLocaleString()}</p>
             </div>
             <div className="rounded-lg border border-slate-700/70 bg-slate-900/40 px-2.5 py-2">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">Successful</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">成功次数</p>
               <p className="mt-0.5 text-xs font-semibold text-emerald-300">{usageData.totals.successCount.toLocaleString()}</p>
             </div>
             <div className="rounded-lg border border-slate-700/70 bg-slate-900/40 px-2.5 py-2">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">Failed</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">失败次数</p>
               <p className="mt-0.5 text-xs font-semibold text-rose-300">{usageData.totals.failureCount.toLocaleString()}</p>
             </div>
             <div className="rounded-lg border border-slate-700/70 bg-slate-900/40 px-2.5 py-2">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">Total Tokens</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">Token 总量</p>
               <p className="mt-0.5 text-xs font-semibold text-slate-100">{usageData.totals.totalTokens.toLocaleString()}</p>
             </div>
           </div>
@@ -310,15 +310,15 @@ export default function UsagePage() {
           {hasInputOutputBreakdown && (
             <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-2">
               <div className="rounded-lg border border-slate-700/70 bg-slate-900/40 px-2.5 py-2">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">Input Tokens</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">输入 Token</p>
                 <p className="mt-0.5 text-xs font-semibold text-slate-100">{usageData.totals.inputTokens.toLocaleString()}</p>
               </div>
               <div className="rounded-lg border border-slate-700/70 bg-slate-900/40 px-2.5 py-2">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">Output Tokens</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">输出 Token</p>
                 <p className="mt-0.5 text-xs font-semibold text-slate-100">{usageData.totals.outputTokens.toLocaleString()}</p>
               </div>
               <div className="rounded-lg border border-slate-700/70 bg-slate-900/40 px-2.5 py-2">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">Total Tokens</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">Token 总量</p>
                 <p className="mt-0.5 text-xs font-semibold text-slate-100">{usageData.totals.totalTokens.toLocaleString()}</p>
               </div>
             </div>
@@ -327,15 +327,15 @@ export default function UsagePage() {
           {hasLatencyBreakdown && usageData?.latencySummary ? (
             <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-2">
               <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/10 px-2.5 py-2">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-cyan-200/70">Avg Latency</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-cyan-200/70">平均延迟</p>
                 <p className="mt-0.5 text-xs font-semibold text-cyan-100">{formatLatencyValue(usageData.latencySummary.averageMs)}</p>
               </div>
               <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-2.5 py-2">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-200/70">P95 Latency</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-200/70">P95 延迟</p>
                 <p className="mt-0.5 text-xs font-semibold text-amber-100">{formatLatencyValue(usageData.latencySummary.p95Ms)}</p>
               </div>
               <div className="rounded-lg border border-rose-500/20 bg-rose-500/10 px-2.5 py-2">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-rose-200/70">Slowest Request</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-rose-200/70">最慢请求</p>
                 <p className="mt-0.5 text-xs font-semibold text-rose-100">{formatLatencyValue(usageData.latencySummary.maxMs)}</p>
               </div>
             </div>

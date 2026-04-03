@@ -192,12 +192,12 @@ function calcOverallCapacity(summaries: ProviderSummary[]): { value: number; lab
   }
 
   if (weightedAccounts === 0) {
-    return { value: 0, label: "No Data", provider: "" };
+    return { value: 0, label: "暂无数据", provider: "" };
   }
 
   return {
     value: weightedCapacity / weightedAccounts,
-    label: "Weighted capacity",
+    label: "加权容量",
     provider: "all",
   };
 }
@@ -261,7 +261,7 @@ export default function QuotaPage() {
   ).length;
 
   const providerFilters = [
-    { key: PROVIDERS.ALL, label: "All" },
+    { key: PROVIDERS.ALL, label: "全部" },
     { key: PROVIDERS.ANTIGRAVITY, label: "Antigravity" },
     { key: PROVIDERS.CLAUDE, label: "Claude" },
     { key: PROVIDERS.CODEX, label: "Codex" },
@@ -278,8 +278,8 @@ export default function QuotaPage() {
       <section className="rounded-lg border border-slate-700/70 bg-slate-900/40 p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight text-slate-100">Quota</h1>
-            <p className="mt-1 text-sm text-slate-400">Monitor OAuth account quotas and usage windows.</p>
+            <h1 className="text-xl font-semibold tracking-tight text-slate-100">额度分析</h1>
+            <p className="mt-1 text-sm text-slate-400">监控 OAuth 账户额度及用量窗口状态。</p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
             <div className="flex flex-wrap gap-1">
@@ -302,7 +302,7 @@ export default function QuotaPage() {
               ))}
             </div>
             <Button onClick={fetchQuota} disabled={loading} className="px-2.5 py-1 text-xs">
-              {loading ? "Loading..." : "Refresh"}
+              {loading ? "加载中..." : "刷新"}
             </Button>
           </div>
         </div>
@@ -310,25 +310,25 @@ export default function QuotaPage() {
 
       {loading && !quotaData ? (
         <div className="rounded-lg border border-slate-700/70 bg-slate-900/40 p-6 text-center text-sm text-slate-400">
-          Loading quota data...
+          正在加载额度数据...
         </div>
       ) : (
         <>
           <section className="grid grid-cols-2 gap-2 lg:grid-cols-4">
             <div className="rounded-lg border border-slate-700/70 bg-slate-900/40 px-2.5 py-2">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">Active Accounts</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">活跃账户</p>
               <p className="mt-0.5 text-xs font-semibold text-slate-100">{activeAccounts}</p>
             </div>
             <div className="rounded-lg border border-slate-700/70 bg-slate-900/40 px-2.5 py-2">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">Overall Capacity <HelpTooltip content="Weighted average of remaining quota across all active provider accounts" /></p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">总体容量 <HelpTooltip content="所有活跃服务商账户剩余额度的加权平均值" /></p>
               <p className="mt-0.5 text-xs font-semibold text-slate-100">{Math.round(overallCapacity.value * 100)}%</p>
             </div>
             <div className="rounded-lg border border-slate-700/70 bg-slate-900/40 px-2.5 py-2">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">Low Capacity <HelpTooltip content="Number of accounts with remaining quota below 20%" /></p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">低容量警告 <HelpTooltip content="剩余额度低于 20% 的账户数量" /></p>
               <p className="mt-0.5 text-xs font-semibold text-slate-100">{lowCapacityCount}</p>
             </div>
             <div className="rounded-lg border border-slate-700/70 bg-slate-900/40 px-2.5 py-2">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">Providers</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">服务商数量</p>
               <p className="mt-0.5 text-xs font-semibold text-slate-100">{providerSummaries.length}</p>
             </div>
           </section>

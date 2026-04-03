@@ -135,31 +135,31 @@ export default function ProvidersPage() {
     <div className="space-y-6">
       <section className="rounded-lg border border-slate-700/70 bg-slate-900/40 p-4">
         <h1 className="text-xl font-semibold tracking-tight text-slate-100">
-          AI Provider Configuration
+          AI 服务提供商配置
         </h1>
         <p className="mt-1 text-sm text-slate-400">
-          Manage API keys, OAuth accounts, and custom provider endpoints in one place.
+          在这里统一管理 API 密钥、OAuth 账户及自定义服务商端点。
         </p>
       </section>
 
       <section className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         <div className="rounded-lg border border-slate-700/70 bg-slate-900/40 px-2.5 py-2">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">API Keys</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">API 密钥</p>
           <p className="mt-0.5 text-xs font-semibold text-slate-100">
-            {totalApiKeys} configured{currentUser ? ` · ${ownApiKeyCount} yours` : ""}
+            已配置 {totalApiKeys} 个{currentUser ? ` · 其中 ${ownApiKeyCount} 个是您的` : ""}
           </p>
         </div>
         <div className="rounded-lg border border-slate-700/70 bg-slate-900/40 px-2.5 py-2">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">Active Providers</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">已启用服务商</p>
           <p className="mt-0.5 text-xs font-semibold text-slate-100">{activeApiProviders}/{API_KEY_PROVIDERS.length}</p>
         </div>
         <div className="rounded-lg border border-slate-700/70 bg-slate-900/40 px-2.5 py-2">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">OAuth Accounts</p>
-          <p className="mt-0.5 text-xs font-semibold text-slate-100">{oauthAccountCount} connected</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">OAuth 账户</p>
+          <p className="mt-0.5 text-xs font-semibold text-slate-100">已连接 {oauthAccountCount} 个</p>
         </div>
         <div className="rounded-lg border border-slate-700/70 bg-slate-900/40 px-2.5 py-2">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">Custom Providers</p>
-          <p className="mt-0.5 text-xs font-semibold text-slate-100">{customProviderCount} configured</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">自定义服务商</p>
+          <p className="mt-0.5 text-xs font-semibold text-slate-100">已配置 {customProviderCount} 个</p>
         </div>
       </section>
 
@@ -168,7 +168,7 @@ export default function ProvidersPage() {
           <div className="flex items-center justify-center">
             <div className="flex flex-col items-center gap-4">
               <div className="size-8 animate-spin rounded-full border-4 border-white/20 border-t-blue-500"></div>
-              <p className="text-white/80">Loading providers...</p>
+              <p className="text-white/80">正在加载服务商配置...</p>
             </div>
           </div>
         </div>
@@ -205,19 +205,19 @@ export default function ProvidersPage() {
           {currentUser?.isAdmin && (
             <section id="provider-admin" className="space-y-3 rounded-lg border border-slate-700/70 bg-slate-900/40 p-4">
               <div>
-                <h2 className="text-sm font-semibold text-slate-100">Admin Settings</h2>
-                <p className="text-xs text-slate-400">Provider limits and policies</p>
+                <h2 className="text-sm font-semibold text-slate-100">管理员设置</h2>
+                <p className="text-xs text-slate-400">服务商限制与策略配置</p>
               </div>
 
               <div className="rounded-md border border-slate-700/60 bg-slate-900/30 p-4">
-                <h3 className="text-sm font-semibold text-slate-100">Key Contribution Limits</h3>
+                <h3 className="text-sm font-semibold text-slate-100">密钥贡献限制</h3>
                 <p className="mt-1 text-sm text-slate-400">
-                  Control how many provider keys each user can contribute
+                  控制每位用户可贡献的服务商密钥上限
                 </p>
                 <div className="flex items-center gap-4">
                   <div className="flex-1">
                     <label htmlFor="max-keys" className="mb-2 block text-sm font-semibold text-slate-300">
-                      Max Keys Per User
+                      每用户最多密钥数
                     </label>
                     <Input
                       type="number"
@@ -231,7 +231,7 @@ export default function ProvidersPage() {
                       }}
                     />
                     <p className="mt-1.5 text-xs text-slate-500">
-                      Maximum number of provider keys a single user can contribute (current: {maxKeysPerUser})
+                      单个用户可贡献的最大服务商密钥数量（当前: {maxKeysPerUser}）
                     </p>
                   </div>
                   <Button
@@ -248,17 +248,17 @@ export default function ProvidersPage() {
                           }),
                         });
                         if (res.ok) {
-                          showToast("Setting updated successfully", "success");
+                          showToast("设置已更新成功", "success");
                         } else {
                           const data = await res.json();
-                          showToast(extractApiError(data, "Failed to update setting"), "error");
+                          showToast(extractApiError(data, "更新设置失败"), "error");
                         }
                       } catch {
-                        showToast("Network error", "error");
+                        showToast("网络异常", "error");
                       }
                     }}
                   >
-                    Save
+                    保存
                   </Button>
                 </div>
               </div>
