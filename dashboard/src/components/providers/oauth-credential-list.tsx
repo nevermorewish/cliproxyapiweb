@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { OwnerBadge, type CurrentUserLike } from "@/components/providers/api-key-section";
+import { useTranslation } from "@/lib/i18n-client";
 
 interface OAuthAccountWithOwnership {
   id: string;
@@ -52,11 +53,12 @@ function OAuthStatusBadge({
   statusMessage: string | null;
   unavailable: boolean;
 }) {
+  const { t } = useTranslation();
   const message = parseStatusMessage(statusMessage);
 
   if (status === "active" && !unavailable) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-400" title="Token is valid and working">
+      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-400" title={t("oauth.tokenValid")}>
         <span className="size-1.5 rounded-full bg-emerald-400" />
         Active
       </span>
@@ -124,6 +126,7 @@ function ProxyUrlEditor({
   onSave: (accountName: string, proxyUrl: string) => Promise<boolean>;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const [value, setValue] = useState(currentProxyUrl || "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -134,11 +137,11 @@ function ProxyUrlEditor({
       try {
         const url = new URL(value.trim());
         if (!["http:", "https:", "socks5:", "socks4:"].includes(url.protocol)) {
-          setError("支持的协议: http, https, socks5, socks4");
+          setError(t("oauth.protocolError"));
           return;
         }
       } catch {
-        setError("无效的 URL 格式。示例: http://user:pass@ip:port");
+        setError(t("oauth.invalidUrlFormat"));
         return;
       }
     }
@@ -150,14 +153,14 @@ function ProxyUrlEditor({
     if (ok) {
       onClose();
     } else {
-      setError("保存失败，请重试");
+      setError(t("oauth.saveFailed"));
     }
   };
 
   return (
     <div className="mt-2 space-y-2 rounded-md border border-slate-600/50 bg-slate-800/60 p-3">
       <label className="block text-xs font-medium text-slate-300">
-        代理 URL (Proxy URL)
+        {t("oauth.proxyUrlLabel")}
       </label>
       <Input
         type="text"
@@ -169,7 +172,7 @@ function ProxyUrlEditor({
         className="font-mono text-xs"
       />
       <p className="text-[10px] text-slate-500">
-        格式: http://用户名:密码@IP:端口 或 socks5://用户名:密码@IP:端口。留空则清除代理。
+        {t("oauth.proxyUrlFormat")}
       </p>
       {error && <p className="text-xs text-red-400">{error}</p>}
       <div className="flex items-center gap-2">
@@ -179,7 +182,7 @@ function ProxyUrlEditor({
           disabled={saving}
           onClick={handleSave}
         >
-          {saving ? "保存中..." : "保存"}
+          {saving ? t("common.saving") : t("common.save")}
         </Button>
         <Button
           variant="secondary"
@@ -187,7 +190,7 @@ function ProxyUrlEditor({
           disabled={saving}
           onClick={onClose}
         >
-          取消
+          {t("common.cancel")}
         </Button>
       </div>
     </div>

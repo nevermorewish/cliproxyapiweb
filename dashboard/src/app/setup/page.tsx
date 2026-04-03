@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { API_ENDPOINTS } from "@/lib/api-endpoints";
+import { useTranslation } from "@/lib/i18n-client";
 
 export default function SetupPage() {
   const [username, setUsername] = useState("");
@@ -13,18 +14,19 @@ export default function SetupPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { t } = useTranslation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
     if (password !== confirmPassword) {
-      setError("输入的两次密码不一致");
+      setError(t("setup.passwordMismatch"));
       return;
     }
 
     if (password.length < 8) {
-      setError("密码至少需要 8 个字符");
+      setError(t("setup.passwordTooShort"));
       return;
     }
 
@@ -42,7 +44,7 @@ export default function SetupPage() {
       if (!res.ok) {
         const errorMsg = typeof data.error === "string" 
           ? data.error 
-          : (data.error?.message ?? "系统初始化失败");
+          : (data.error?.message ?? t("setup.initFailed"));
         setError(errorMsg);
         setLoading(false);
         return;
@@ -52,7 +54,7 @@ export default function SetupPage() {
       router.push("/dashboard");
       router.refresh();
     } catch {
-      setError("网络异常，请重试。");
+      setError(t("setup.networkError"));
       setLoading(false);
     }
   };
@@ -71,18 +73,18 @@ export default function SetupPage() {
           <h1 className="text-2xl font-semibold tracking-tight text-white">
             CLIProxyAPI
           </h1>
-          <p className="mt-1 text-sm text-white/50">系统首次初始化配置</p>
+          <p className="mt-1 text-sm text-white/50">{t("setup.subtitle")}</p>
         </div>
 
          <div className="glass-card rounded-xl p-6 shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
           <div className="mb-4 rounded-xl bg-amber-500/15 border border-amber-400/25 p-3 text-sm text-amber-200">
-            创建您的初始管理员账户。请务必妥善保管好此凭证信息。
+            {t("setup.warning")}
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label htmlFor="username" className="mb-2 block text-xs font-medium text-white/70 uppercase tracking-wider">
-                管理员账号
+                {t("setup.username")}
               </label>
               <Input
                 type="text"
@@ -97,7 +99,7 @@ export default function SetupPage() {
 
             <div>
               <label htmlFor="password" className="mb-2 block text-xs font-medium text-white/70 uppercase tracking-wider">
-                初始登录密码
+                {t("setup.password")}
               </label>
               <Input
                 type="password"
@@ -106,13 +108,13 @@ export default function SetupPage() {
                 onChange={setPassword}
                 required
                 autoComplete="new-password"
-                placeholder="最少需要 8 个字符"
+                placeholder={t("setup.passwordPlaceholder")}
               />
             </div>
 
             <div>
               <label htmlFor="confirmPassword" className="mb-2 block text-xs font-medium text-white/70 uppercase tracking-wider">
-                再次确认密码
+                {t("setup.confirmPassword")}
               </label>
               <Input
                 type="password"
@@ -131,13 +133,13 @@ export default function SetupPage() {
             )}
 
             <Button type="submit" disabled={loading} className="w-full">
-              {loading ? "正在处理创建..." : "确认创建账号"}
+              {loading ? t("setup.submitting") : t("setup.submit")}
             </Button>
           </form>
         </div>
 
         <p className="mt-6 text-center text-xs text-white/30">
-          CLIProxyAPI 管理系统
+          {t("setup.footer")}
         </p>
       </div>
     </div>

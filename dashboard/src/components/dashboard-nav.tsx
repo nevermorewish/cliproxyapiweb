@@ -7,6 +7,7 @@ import { useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useMobileSidebar } from "@/components/mobile-sidebar-context";
 import { useAuth } from "@/hooks/use-auth";
+import { useTranslation } from "@/lib/i18n-client";
 
 function IconPlayCircle({ className }: { className?: string }) {
   return (
@@ -116,23 +117,23 @@ function IconLogs({ className }: { className?: string }) {
 }
 
 const NAV_SECTIONS = [
-  { key: "general", label: "基础设置" },
-  { key: "access", label: "访问控制" },
-  { key: "admin", label: "系统管理" },
+  { key: "general", labelKey: "nav.general" },
+  { key: "access", labelKey: "nav.access" },
+  { key: "admin", labelKey: "nav.admin" },
 ] as const;
 
 const NAV_ITEMS = [
-  { href: "/dashboard", label: "快速开始", icon: IconPlayCircle, adminOnly: false, section: "general" },
-  { href: "/dashboard/providers", label: "服务提供商", icon: IconLayers, adminOnly: false, section: "general" },
-  { href: "/dashboard/usage", label: "使用统计", icon: IconBarChart, adminOnly: false, section: "general" },
-  { href: "/dashboard/quota", label: "额度分析", icon: IconGauge, adminOnly: false, section: "general" },
-  { href: "/dashboard/api-keys", label: "API 密钥", icon: IconKey, adminOnly: false, section: "access" },
-  { href: "/dashboard/settings", label: "设定调整", icon: IconSettings, adminOnly: false, section: "access" },
-  { href: "/dashboard/monitoring", label: "运行监控", icon: IconActivity, adminOnly: true, section: "admin" },
-  { href: "/dashboard/containers", label: "容器守护", icon: IconBox, adminOnly: true, section: "admin" },
-  { href: "/dashboard/config", label: "源文配置", icon: IconFileCode, adminOnly: true, section: "admin" },
-  { href: "/dashboard/admin/users", label: "账号管理", icon: IconUsers, adminOnly: true, section: "admin" },
-  { href: "/dashboard/admin/logs", label: "操作日志", icon: IconLogs, adminOnly: true, section: "admin" },
+  { href: "/dashboard", labelKey: "nav.quickStart", icon: IconPlayCircle, adminOnly: false, section: "general" },
+  { href: "/dashboard/providers", labelKey: "nav.providers", icon: IconLayers, adminOnly: false, section: "general" },
+  { href: "/dashboard/usage", labelKey: "nav.usage", icon: IconBarChart, adminOnly: false, section: "general" },
+  { href: "/dashboard/quota", labelKey: "nav.quota", icon: IconGauge, adminOnly: false, section: "general" },
+  { href: "/dashboard/api-keys", labelKey: "nav.apiKeys", icon: IconKey, adminOnly: false, section: "access" },
+  { href: "/dashboard/settings", labelKey: "nav.settings", icon: IconSettings, adminOnly: false, section: "access" },
+  { href: "/dashboard/monitoring", labelKey: "nav.monitoring", icon: IconActivity, adminOnly: true, section: "admin" },
+  { href: "/dashboard/containers", labelKey: "nav.containers", icon: IconBox, adminOnly: true, section: "admin" },
+  { href: "/dashboard/config", labelKey: "nav.config", icon: IconFileCode, adminOnly: true, section: "admin" },
+  { href: "/dashboard/admin/users", labelKey: "nav.users", icon: IconUsers, adminOnly: true, section: "admin" },
+  { href: "/dashboard/admin/logs", labelKey: "nav.logs", icon: IconLogs, adminOnly: true, section: "admin" },
 ] as const;
 
 export function DashboardNav() {
@@ -140,6 +141,7 @@ export function DashboardNav() {
   const { isOpen, isCollapsed, toggleCollapsed, close } = useMobileSidebar();
   const { user } = useAuth();
   const isAdmin = user?.isAdmin ?? false;
+  const { t } = useTranslation();
 
   const handleNavClick = () => {
     close();
@@ -221,7 +223,7 @@ export function DashboardNav() {
             return (
               <li key={section.key} className="space-y-1.5">
                 <p className={cn("px-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500", isCollapsed && "lg:hidden")}>
-                  {section.label}
+                  {t(section.labelKey)}
                 </p>
                 <ul className="space-y-1">
                   {items.map((item) => {
@@ -240,10 +242,10 @@ export function DashboardNav() {
                               ? "glass-nav-item-active text-slate-100"
                               : "glass-nav-item text-slate-300 hover:text-slate-100"
                           )}
-                          title={isCollapsed ? item.label : undefined}
+                          title={isCollapsed ? t(item.labelKey) : undefined}
                         >
                           <IconComponent className="h-4 w-4" />
-                          <span className={cn(isCollapsed && "lg:hidden")}>{item.label}</span>
+                          <span className={cn(isCollapsed && "lg:hidden")}>{t(item.labelKey)}</span>
                         </Link>
                       </li>
                     );

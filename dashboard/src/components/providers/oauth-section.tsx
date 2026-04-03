@@ -8,6 +8,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { extractApiError } from "@/lib/utils";
 import { API_ENDPOINTS } from "@/lib/api-endpoints";
+import { useTranslation } from "@/lib/i18n-client";
 import type { CurrentUserLike } from "@/components/providers/api-key-section";
 import { OAuthCredentialList, type OAuthAccountWithOwnership } from "@/components/providers/oauth-credential-list";
 import { OAuthImportForm } from "@/components/providers/oauth-import-form";
@@ -194,6 +195,7 @@ export function OAuthSection({
   refreshProviders,
   onAccountCountChange,
 }: OAuthSectionProps) {
+  const { t } = useTranslation();
   const [isOAuthModalOpen, setIsOAuthModalOpen] = useState(false);
   const [oauthModalStatus, setOauthModalStatus] = useState<ModalStatus>(MODAL_STATUS.IDLE);
   const [selectedOAuthProviderId, setSelectedOAuthProviderId] = useState<OAuthProviderId | null>(null);
@@ -786,7 +788,7 @@ export function OAuthSection({
         showToast(extractApiError(data, "Failed to update proxy URL"), "error");
         return false;
       }
-      showToast(proxyUrl ? "代理 URL 已设置" : "代理 URL 已清除", "success");
+      showToast(proxyUrl ? t("oauth.proxyUrlSet") : t("oauth.proxyUrlCleared"), "success");
       await loadAccounts();
       return true;
     } catch {

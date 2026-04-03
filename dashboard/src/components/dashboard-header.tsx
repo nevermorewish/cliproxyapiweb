@@ -4,8 +4,10 @@ import useSWR from "swr";
 import { API_ENDPOINTS } from "@/lib/api-endpoints";
 import { NotificationBell } from "@/components/header/notification-bell";
 import { LatencyIndicator } from "@/components/header/latency-indicator";
+import { LocaleSwitcher } from "@/components/locale-switcher";
 import { useHeaderNotifications } from "@/hooks/use-header-notifications";
 import { useAuth } from "@/hooks/use-auth";
+import { useTranslation } from "@/lib/i18n-client";
 
 interface DashboardHeaderProps {
   onUserClick: () => void;
@@ -44,6 +46,7 @@ const statusFetcher = (url: string) =>
 export function DashboardHeader({ onUserClick, username, isAdmin, externalStatus }: DashboardHeaderProps) {
   const hasExternalStatus = externalStatus !== undefined;
   const { user } = useAuth();
+  const { t } = useTranslation();
   const { notifications, criticalCount, totalCount, dismissNotification } = useHeaderNotifications(isAdmin, user?.id ?? "");
 
   const { data: swrStatus, isLoading: swrLoading } = useSWR<ProxyStatus>(
@@ -65,17 +68,17 @@ export function DashboardHeader({ onUserClick, username, isAdmin, externalStatus
           {isLoading ? (
             <>
               <div className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
-              <span className="text-slate-400">状态检测中...</span>
+              <span className="text-slate-400">{t("header.checkingStatus")}</span>
             </>
           ) : status?.running ? (
             <>
               <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse-dot" />
-              <span className="text-emerald-400 font-medium">系统运行正常</span>
+              <span className="text-emerald-400 font-medium">{t("header.systemOnline")}</span>
             </>
           ) : (
             <>
               <div className="w-2.5 h-2.5 rounded-full bg-red-500" />
-              <span className="text-red-400 font-medium">系统连接离线</span>
+              <span className="text-red-400 font-medium">{t("header.systemOffline")}</span>
             </>
           )}
         </div>
@@ -84,7 +87,7 @@ export function DashboardHeader({ onUserClick, username, isAdmin, externalStatus
           <>
             <div className="w-px h-4 bg-slate-700" />
             <span className="text-slate-400 text-xs">
-              已稳定运行: {formatUptime(status.uptime)}
+              {t("header.uptime")} {formatUptime(status.uptime)}
             </span>
           </>
         )}
@@ -99,8 +102,10 @@ export function DashboardHeader({ onUserClick, username, isAdmin, externalStatus
         )}
       </div>
 
-      {/* Right Side: Notifications + User */}
+      {/* Right Side: Locale + Notifications + User */}
       <div className="flex items-center gap-2">
+        <LocaleSwitcher />
+
         <NotificationBell
           notifications={notifications}
           criticalCount={criticalCount}

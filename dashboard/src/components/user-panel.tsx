@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { API_ENDPOINTS } from "@/lib/api-endpoints";
+import { useTranslation } from "@/lib/i18n-client";
 
 interface UserPanelProps {
   isOpen: boolean;
@@ -16,6 +17,7 @@ interface UserPanelProps {
 
 export function UserPanel({ isOpen, onClose, username, isAdmin }: UserPanelProps) {
   const router = useRouter();
+  const { t } = useTranslation();
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -67,11 +69,11 @@ export function UserPanel({ isOpen, onClose, username, isAdmin }: UserPanelProps
     e.preventDefault();
 
     if (newPassword !== confirmPassword) {
-      setError("两次填写的密码不一致");
+      setError(t("userPanel.passwordMismatch"));
       return;
     }
     if (newPassword.length < 8) {
-      setError("密码长度至少需8个字符");
+      setError(t("userPanel.passwordTooShort"));
       return;
     }
 
@@ -87,7 +89,7 @@ export function UserPanel({ isOpen, onClose, username, isAdmin }: UserPanelProps
 
       if (!res.ok) {
         const data = await res.json();
-        setError(data.error?.message ?? data.error ?? "修改密码失败");
+        setError(data.error?.message ?? data.error ?? t("userPanel.changeFailed"));
         return;
       }
 
@@ -97,7 +99,7 @@ export function UserPanel({ isOpen, onClose, username, isAdmin }: UserPanelProps
       setConfirmPassword("");
       setTimeout(() => setSuccess(false), 3000);
     } catch {
-      setError("网络错误，请稍后重试");
+      setError(t("userPanel.networkError"));
     } finally {
       setLoading(false);
     }
@@ -141,7 +143,7 @@ export function UserPanel({ isOpen, onClose, username, isAdmin }: UserPanelProps
                     </span>
                   )}
                 </div>
-                <p className="mt-0.5 text-xs text-slate-500">控制台账户</p>
+                <p className="mt-0.5 text-xs text-slate-500">{t("userPanel.consoleAccount")}</p>
               </div>
             </div>
 
@@ -162,7 +164,7 @@ export function UserPanel({ isOpen, onClose, username, isAdmin }: UserPanelProps
           <div className="mb-6 rounded-md border border-slate-700/50 bg-slate-800/30 px-3 py-2.5">
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse-dot" />
-              <span className="text-xs font-medium text-slate-400">会话激活中</span>
+              <span className="text-xs font-medium text-slate-400">{t("userPanel.sessionActive")}</span>
             </div>
             <p className="mt-1 text-xs text-slate-500 pl-3.5">
               {new Date().toLocaleDateString("en-US", {
@@ -188,7 +190,7 @@ export function UserPanel({ isOpen, onClose, username, isAdmin }: UserPanelProps
                 <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
-                修改账号密码
+                {t("userPanel.changePassword")}
               </div>
               <svg
                 className={cn("w-4 h-4 text-slate-500 transition-transform duration-200", passwordOpen && "rotate-180")}
@@ -211,7 +213,7 @@ export function UserPanel({ isOpen, onClose, username, isAdmin }: UserPanelProps
               <form onSubmit={handlePasswordChange} className="space-y-3 px-3">
                 <div>
                   <label htmlFor="panel-current-password" className="mb-1 block text-xs font-medium text-slate-400">
-                    当前密码
+                    {t("userPanel.currentPassword")}
                   </label>
                   <Input
                     type="password"
@@ -225,7 +227,7 @@ export function UserPanel({ isOpen, onClose, username, isAdmin }: UserPanelProps
 
                 <div>
                   <label htmlFor="panel-new-password" className="mb-1 block text-xs font-medium text-slate-400">
-                    全新密码
+                    {t("userPanel.newPassword")}
                   </label>
                   <Input
                     type="password"
@@ -234,13 +236,13 @@ export function UserPanel({ isOpen, onClose, username, isAdmin }: UserPanelProps
                     onChange={setNewPassword}
                     required
                     autoComplete="new-password"
-                    placeholder="密码至少需要 8 个字符"
+                    placeholder={t("userPanel.newPasswordPlaceholder")}
                   />
                 </div>
 
                 <div>
                   <label htmlFor="panel-confirm-password" className="mb-1 block text-xs font-medium text-slate-400">
-                    再次确认密码
+                    {t("userPanel.confirmPassword")}
                   </label>
                   <Input
                     type="password"
@@ -261,12 +263,12 @@ export function UserPanel({ isOpen, onClose, username, isAdmin }: UserPanelProps
 
                 {success && (
                   <div className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300">
-                    账号密码修改成功，请妥善保管新密码！
+                    {t("userPanel.passwordChangeSuccess")}
                   </div>
                 )}
 
                 <Button type="submit" disabled={loading} className="w-full">
-                  {loading ? "提交处理中..." : "确认更新密码"}
+                  {loading ? t("userPanel.submitting") : t("userPanel.submitPassword")}
                 </Button>
               </form>
             </div>
@@ -285,7 +287,7 @@ export function UserPanel({ isOpen, onClose, username, isAdmin }: UserPanelProps
               <circle cx="12" cy="12" r="3" />
               <path d="M12 1v6m0 6v6M5.6 5.6l4.2 4.2m4.8 4.8l4.2 4.2M1 12h6m6 0h6M5.6 18.4l4.2-4.2m4.8-4.8l4.2-4.2" />
             </svg>
-            系统全局设置
+            {t("userPanel.globalSettings")}
           </button>
 
           {/* Spacer */}
@@ -298,7 +300,7 @@ export function UserPanel({ isOpen, onClose, username, isAdmin }: UserPanelProps
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>
-                登出退出
+                {t("userPanel.logout")}
               </span>
             </Button>
           </div>

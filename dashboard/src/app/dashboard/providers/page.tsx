@@ -19,6 +19,7 @@ import {
 import { CustomProviderSection } from "@/components/providers/custom-provider-section";
 import { OAuthSection } from "@/components/providers/oauth-section";
 import { PerplexityProSection } from "@/components/providers/perplexity-pro-section";
+import { useTranslation } from "@/lib/i18n-client";
 
 interface CurrentUser {
   id: string;
@@ -70,6 +71,7 @@ export default function ProvidersPage() {
   const [oauthAccountCount, setOauthAccountCount] = useState(0);
   const [customProviderCount, setCustomProviderCount] = useState(0);
   const { showToast } = useToast();
+  const { t } = useTranslation();
 
   const loadMaxKeysPerUser = useCallback(async (isAdminUser: boolean, signal?: AbortSignal) => {
     if (!isAdminUser) return;
@@ -135,31 +137,31 @@ export default function ProvidersPage() {
     <div className="space-y-6">
       <section className="rounded-lg border border-slate-700/70 bg-slate-900/40 p-4">
         <h1 className="text-xl font-semibold tracking-tight text-slate-100">
-          AI 服务提供商配置
+          {t("providers.title")}
         </h1>
         <p className="mt-1 text-sm text-slate-400">
-          在这里统一管理 API 密钥、OAuth 账户及自定义服务商端点。
+          {t("providers.subtitle")}
         </p>
       </section>
 
       <section className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         <div className="rounded-lg border border-slate-700/70 bg-slate-900/40 px-2.5 py-2">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">API 密钥</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">{t("providers.apiKeysLabel")}</p>
           <p className="mt-0.5 text-xs font-semibold text-slate-100">
-            已配置 {totalApiKeys} 个{currentUser ? ` · 其中 ${ownApiKeyCount} 个是您的` : ""}
+            {t("providers.apiKeysConfigured", { count: totalApiKeys })}{currentUser ? ` · ${t("providers.apiKeysOwn", { count: ownApiKeyCount })}` : ""}
           </p>
         </div>
         <div className="rounded-lg border border-slate-700/70 bg-slate-900/40 px-2.5 py-2">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">已启用服务商</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">{t("providers.activeProviders")}</p>
           <p className="mt-0.5 text-xs font-semibold text-slate-100">{activeApiProviders}/{API_KEY_PROVIDERS.length}</p>
         </div>
         <div className="rounded-lg border border-slate-700/70 bg-slate-900/40 px-2.5 py-2">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">OAuth 账户</p>
-          <p className="mt-0.5 text-xs font-semibold text-slate-100">已连接 {oauthAccountCount} 个</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">{t("providers.oauthAccounts")}</p>
+          <p className="mt-0.5 text-xs font-semibold text-slate-100">{t("providers.oauthConnected", { count: oauthAccountCount })}</p>
         </div>
         <div className="rounded-lg border border-slate-700/70 bg-slate-900/40 px-2.5 py-2">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">自定义服务商</p>
-          <p className="mt-0.5 text-xs font-semibold text-slate-100">已配置 {customProviderCount} 个</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">{t("providers.customProviders")}</p>
+          <p className="mt-0.5 text-xs font-semibold text-slate-100">{t("providers.customConfigured", { count: customProviderCount })}</p>
         </div>
       </section>
 
@@ -168,7 +170,7 @@ export default function ProvidersPage() {
           <div className="flex items-center justify-center">
             <div className="flex flex-col items-center gap-4">
               <div className="size-8 animate-spin rounded-full border-4 border-white/20 border-t-blue-500"></div>
-              <p className="text-white/80">正在加载服务商配置...</p>
+              <p className="text-white/80">{t("providers.loadingConfig")}</p>
             </div>
           </div>
         </div>
@@ -205,19 +207,19 @@ export default function ProvidersPage() {
           {currentUser?.isAdmin && (
             <section id="provider-admin" className="space-y-3 rounded-lg border border-slate-700/70 bg-slate-900/40 p-4">
               <div>
-                <h2 className="text-sm font-semibold text-slate-100">管理员设置</h2>
-                <p className="text-xs text-slate-400">服务商限制与策略配置</p>
+                <h2 className="text-sm font-semibold text-slate-100">{t("providers.adminSettings")}</h2>
+                <p className="text-xs text-slate-400">{t("providers.adminSubtitle")}</p>
               </div>
 
               <div className="rounded-md border border-slate-700/60 bg-slate-900/30 p-4">
-                <h3 className="text-sm font-semibold text-slate-100">密钥贡献限制</h3>
+                <h3 className="text-sm font-semibold text-slate-100">{t("providers.keyContribution")}</h3>
                 <p className="mt-1 text-sm text-slate-400">
-                  控制每位用户可贡献的服务商密钥上限
+                  {t("providers.keyContributionDesc")}
                 </p>
                 <div className="flex items-center gap-4">
                   <div className="flex-1">
                     <label htmlFor="max-keys" className="mb-2 block text-sm font-semibold text-slate-300">
-                      每用户最多密钥数
+                     {t("providers.maxKeysPerUser")}
                     </label>
                     <Input
                       type="number"
@@ -231,7 +233,7 @@ export default function ProvidersPage() {
                       }}
                     />
                     <p className="mt-1.5 text-xs text-slate-500">
-                      单个用户可贡献的最大服务商密钥数量（当前: {maxKeysPerUser}）
+                      {t("providers.maxKeysDesc", { count: maxKeysPerUser })}
                     </p>
                   </div>
                   <Button
@@ -248,17 +250,17 @@ export default function ProvidersPage() {
                           }),
                         });
                         if (res.ok) {
-                          showToast("设置已更新成功", "success");
+                          showToast(t("providers.settingsUpdated"), "success");
                         } else {
                           const data = await res.json();
-                          showToast(extractApiError(data, "更新设置失败"), "error");
+                          showToast(extractApiError(data, t("providers.updateFailed")), "error");
                         }
                       } catch {
-                        showToast("网络异常", "error");
+                        showToast(t("common.networkError"), "error");
                       }
                     }}
                   >
-                    保存
+                    {t("common.save")}
                   </Button>
                 </div>
               </div>

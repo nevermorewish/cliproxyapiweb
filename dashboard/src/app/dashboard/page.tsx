@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { CopyBlock } from "@/components/copy-block";
 import { QuickStartConfigSection } from "@/components/quick-start-config-section";
 import { ConfigPublisher } from "@/components/config-publisher";
@@ -13,6 +14,7 @@ import { getProxyUrl, getInternalProxyUrl, buildAvailableModelsFromProxy, extrac
 import type { ConfigData } from "@/lib/config-generators/shared";
 import { resolveOwnedByDisplay } from "@/lib/providers/model-grouping";
 import { DashboardMiniCharts } from "@/components/dashboard-mini-charts";
+import { createTranslator, LOCALE_COOKIE, DEFAULT_LOCALE, type Locale } from "@/lib/i18n";
 
 interface ManagementFetchParams {
   path: string;
@@ -104,12 +106,15 @@ function buildProvidersMap(proxyModels: { id: string; owned_by: string }[]): Map
 }
 
 export default async function QuickStartPage() {
-  const [config, isHealthy, oauthData, session] = await Promise.all([
+  const [config, isHealthy, oauthData, session, cookieStore] = await Promise.all([
     fetchManagementJson({ path: "config" }),
     getServiceHealth(),
     fetchManagementJson({ path: "auth-files" }),
     verifySession(),
+    cookies(),
   ]);
+  const locale = (cookieStore.get(LOCALE_COOKIE)?.value || DEFAULT_LOCALE) as Locale;
+  const t = createTranslator(locale);
 
   const [modelPreference, agentOverride, activeSyncTokens, publishStatus, subscribeStatus, userApiKeys] = session
     ? await Promise.all([
@@ -272,28 +277,28 @@ export default async function QuickStartPage() {
   }
   const statusCards = [
     {
-      label: "服务运行状态",
-      value: isHealthy ? "服务在线" : "连接离线",
+      label: t("dashboard.serviceStatus"),
+      value: isHealthy ? t("dashboard.serviceOnline") : t("dashboard.serviceOffline"),
       tone: isHealthy ? "text-emerald-400" : "text-rose-400",
       icon: "●",
       iconTone: isHealthy ? "text-emerald-300" : "text-rose-300",
     },
     {
-      label: "服务提供商",
-      value: `已配置 ${providerCount} 个服务`,
+      label: t("dashboard.providersLabel"),
+      value: t("dashboard.providersValue", { count: providerCount }),
       tone: "text-slate-100",
       icon: "◆",
       iconTone: "text-blue-300",
     },
     {
-      label: "当前 API 密钥",
-      value: `正常活跃 ${apiKeys.length} 个`,
+      label: t("dashboard.apiKeysLabel"),
+      value: t("dashboard.apiKeysValue", { count: apiKeys.length }),
       tone: "text-slate-100",
       icon: "♟",
       iconTone: "text-amber-300",
     },
     {
-      label: "专属代理节点地址",
+      label: t("dashboard.proxyLabel"),
       value: getProxyUrl(),
       tone: "text-slate-100",
       icon: "◈",
@@ -307,9 +312,9 @@ export default async function QuickStartPage() {
       <section className="rounded-lg border border-slate-700/70 bg-slate-900/40 p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight text-slate-100">应用概览与操作指南</h1>
+            <h1 className="text-xl font-semibold tracking-tight text-slate-100">{t("dashboard.title")}</h1>
             <p className="mt-1 text-sm text-slate-400">
-              在这里快速配置相关的服务方，设置可用客户端规则文件，并安全校验连通性测试。
+              {t("dashboard.subtitle")}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -317,7 +322,7 @@ export default async function QuickStartPage() {
               href="/dashboard/providers"
               className="rounded-md border border-slate-600/80 bg-slate-800/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-slate-200 transition-colors hover:bg-slate-700/80"
             >
-              供应服务设置
+              {t("dashboard.providersLink")}
             </Link>
             <Link
               href="/dashboard/api-keys"
@@ -329,7 +334,7 @@ export default async function QuickStartPage() {
               href="/dashboard/settings"
               className="rounded-md border border-slate-600/80 bg-slate-800/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-slate-200 transition-colors hover:bg-slate-700/80"
             >
-              其它控制设定
+              {t("dashboard.settingsLink")}
             </Link>
           </div>
         </div>
@@ -373,8 +378,8 @@ export default async function QuickStartPage() {
         <details className="group rounded-lg border border-slate-700/70 bg-slate-900/40">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3">
             <div>
-              <p className="text-sm font-semibold text-slate-100">节点服务订阅与分享配置</p>
-              <p className="text-xs text-slate-400">将您的常用配置保存并将其生成邀请链接或者订阅分享给其他伙伴吧！</p>
+              <p className="text-sm font-semibold text-slate-100">{t("dashboard.sharingTitle")}</p>
+              <p className="text-xs text-slate-400">{t("dashboard.sharingSubtitle")}</p>
             </div>
             <svg className="h-4 w-4 text-slate-400 transition-transform duration-200 group-open:rotate-180" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9" /></svg>
           </summary>
@@ -389,8 +394,8 @@ export default async function QuickStartPage() {
         <details className="group rounded-lg border border-slate-700/70 bg-slate-900/40">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3">
             <div>
-              <p className="text-sm font-semibold text-slate-100">其他应用的系统集成</p>
-              <p className="text-xs text-slate-400">一些关于帮助你完成与更多软件完成接入流程的指南内容模块。</p>
+              <p className="text-sm font-semibold text-slate-100">{t("dashboard.integrationsTitle")}</p>
+              <p className="text-xs text-slate-400">{t("dashboard.integrationsSubtitle")}</p>
             </div>
             <svg className="h-4 w-4 text-slate-400 transition-transform duration-200 group-open:rotate-180" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9" /></svg>
           </summary>
@@ -399,15 +404,14 @@ export default async function QuickStartPage() {
               <h3 className="mb-3 text-sm font-semibold text-slate-100">
                 <span className="flex items-center gap-3">
                   <span className="flex h-6 w-6 items-center justify-center rounded-md border border-blue-400/30 bg-blue-500/15 text-sm text-blue-300" aria-hidden="true">&#9654;</span>
-                  与系统内 Claude Code 一并结合搭建工作流
+                  {t("dashboard.claudeCodeTitle")}
                 </span>
               </h3>
               <p className="mb-4 text-sm text-slate-300">
-                另外一种解决方案，您可以通过导入相关的环境变量信息给到 CLIProxyAPI 然后来控制 Claude Code，请记得把里面的 <code className="break-all rounded bg-slate-800/80 px-1.5 py-0.5 font-mono text-xs text-blue-200">your-api-key</code> 参数改为真正的 API key 从您申请创建的{" "}
+                {t("dashboard.claudeCodeDesc")} <code className="break-all rounded bg-slate-800/80 px-1.5 py-0.5 font-mono text-xs text-blue-200">your-api-key</code> {" "}
                 <Link href="/dashboard/api-keys" className="font-medium text-blue-300 underline decoration-blue-400/30 underline-offset-2 hover:text-blue-200">
-                  令牌控制台提取出来填入即可
-                </Link>{" "}
-                page.
+                  {t("dashboard.claudeCodeLink")}
+                </Link>
               </p>
               <CopyBlock code={getClaudeCodeEnv()} />
             </div>
