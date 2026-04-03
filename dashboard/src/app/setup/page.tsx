@@ -18,10 +18,14 @@ export default function SetupPage() {
     e.preventDefault();
     setError("");
 
+    if (password !== confirmPassword) {
       setError("输入的两次密码不一致");
+      return;
     }
 
+    if (password.length < 8) {
       setError("密码至少需要 8 个字符");
+      return;
     }
 
     setLoading(true);
@@ -77,7 +81,9 @@ export default function SetupPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
+              <label htmlFor="username" className="mb-2 block text-xs font-medium text-white/70 uppercase tracking-wider">
                 管理员账号
+              </label>
               <Input
                 type="text"
                 name="username"
@@ -90,7 +96,9 @@ export default function SetupPage() {
             </div>
 
             <div>
+              <label htmlFor="password" className="mb-2 block text-xs font-medium text-white/70 uppercase tracking-wider">
                 初始登录密码
+              </label>
               <Input
                 type="password"
                 name="password"
@@ -103,7 +111,9 @@ export default function SetupPage() {
             </div>
 
             <div>
+              <label htmlFor="confirmPassword" className="mb-2 block text-xs font-medium text-white/70 uppercase tracking-wider">
                 再次确认密码
+              </label>
               <Input
                 type="password"
                 name="confirmPassword"
@@ -122,11 +132,13 @@ export default function SetupPage() {
 
             <Button type="submit" disabled={loading} className="w-full">
               {loading ? "正在处理创建..." : "确认创建账号"}
+            </Button>
           </form>
         </div>
 
         <p className="mt-6 text-center text-xs text-white/30">
           CLIProxyAPI 管理系统
+        </p>
       </div>
     </div>
   );

@@ -78,7 +78,9 @@ export default function LoginPage() {
          <div className="glass-card rounded-xl p-4 sm:p-6 shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
+              <label htmlFor="username" className="mb-2 block text-xs font-medium text-white/70 uppercase tracking-wider">
                 用户账号
+              </label>
               <Input
                 type="text"
                 name="username"
@@ -90,7 +92,9 @@ export default function LoginPage() {
             </div>
 
             <div>
+              <label htmlFor="password" className="mb-2 block text-xs font-medium text-white/70 uppercase tracking-wider">
                 登录密码
+              </label>
               <Input
                 type="password"
                 name="password"
