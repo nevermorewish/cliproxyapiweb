@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { OwnerBadge, type CurrentUserLike } from "@/components/providers/api-key-section";
@@ -129,7 +129,34 @@ function ProxyUrlEditor({
   const { t } = useTranslation();
   const [value, setValue] = useState(currentProxyUrl || "");
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(currentProxyUrl === null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (currentProxyUrl !== null) {
+      setLoading(false);
+      return;
+    }
+
+    let mounted = true;
+    const fetchProxyUrl = async () => {
+      try {
+        const res = await fetch(`/api/management/auth-files/download?name=${encodeURIComponent(accountName)}`);
+        if (!res.ok) throw new Error("Failed to load file");
+        const data = await res.json();
+        if (mounted && data.proxy_url) {
+          setValue(data.proxy_url);
+        }
+      } catch (err) {
+        console.error("Failed to fetch proxy settings:", err);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    fetchProxyUrl();
+
+    return () => { mounted = false; };
+  }, [accountName, currentProxyUrl]);
 
   const handleSave = async () => {
     // Basic URL validation if value is non-empty
@@ -167,8 +194,8 @@ function ProxyUrlEditor({
         name="proxyUrl"
         value={value}
         onChange={setValue}
-        placeholder="http://user:pass@68.64.154.69:30000"
-        disabled={saving}
+        placeholder={loading ? t("common.loading") + "..." : "http://user:pass@68.64.154.69:30000"}
+        disabled={saving || loading}
         className="font-mono text-xs"
       />
       <p className="text-[10px] text-slate-500">
@@ -179,7 +206,7 @@ function ProxyUrlEditor({
         <Button
           variant="primary"
           className="px-3 py-1 text-xs"
-          disabled={saving}
+          disabled={saving || loading}
           onClick={handleSave}
         >
           {saving ? t("common.saving") : t("common.save")}
