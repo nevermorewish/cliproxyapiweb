@@ -183,6 +183,7 @@ quota-exceeded:
   switch-preview-model: true
 routing:
   strategy: "round-robin"
+usage-statistics-enabled: true
 EOF
 
     log_success "Created config.local.yaml (API key: ${api_key})"

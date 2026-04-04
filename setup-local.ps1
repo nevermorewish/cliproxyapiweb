@@ -156,6 +156,7 @@ quota-exceeded:
   switch-preview-model: true
 routing:
   strategy: "round-robin"
+usage-statistics-enabled: true
 "@
 
     [System.IO.File]::WriteAllText($configFile, $yaml, [System.Text.UTF8Encoding]::new($false))
