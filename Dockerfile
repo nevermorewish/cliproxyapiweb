@@ -15,12 +15,15 @@ COPY dashboard/package.json dashboard/package-lock.json ./
 COPY dashboard/next.config.ts dashboard/tsconfig.json dashboard/prisma.config.ts dashboard/postcss.config.mjs ./
 COPY dashboard/public ./public
 COPY dashboard/src ./src
+COPY dashboard/messages ./messages
 COPY dashboard/prisma ./prisma
 
 # ARG is not persisted in image layers — safe for build-time placeholders
 ARG DATABASE_URL="postgresql://build:build@localhost:5432/build"
 ARG JWT_SECRET="build-time-placeholder-at-least-32-chars"
 ARG MANAGEMENT_API_KEY="build-time-placeholder-16ch"
+ARG CLIPROXYAPI_MANAGEMENT_URL="http://127.0.0.1:8317/v0/management"
+ENV CLIPROXYAPI_MANAGEMENT_URL=${CLIPROXYAPI_MANAGEMENT_URL}
 
 RUN npx prisma generate
 RUN npm run build
@@ -43,8 +46,10 @@ ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 ENV COMPOSE_DIR=/opt/cliproxyapi/infrastructure
 ENV DASHBOARD_VERSION=${DASHBOARD_VERSION}
+ENV NEXT_TELEMETRY_DISABLED=1
 
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/messages ./messages
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/src/generated ./src/generated
@@ -58,6 +63,9 @@ RUN chmod +x entrypoint.sh
 
 # Create logs directory with correct ownership before switching to non-root user
 RUN mkdir -p /app/logs && chown nextjs:nodejs /app/logs
+
+# Create backups directory for backup storage
+RUN mkdir -p /app/backups && chown nextjs:nodejs /app/backups
 
 USER nextjs
 
