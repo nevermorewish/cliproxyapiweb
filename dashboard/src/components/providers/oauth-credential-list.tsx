@@ -268,12 +268,12 @@ export function OAuthCredentialList({
                       <OwnerBadge ownerUsername={account.ownerUsername} isOwn={account.isOwn} />
                     )}
                     <OAuthStatusBadge status={account.status} statusMessage={account.statusMessage} unavailable={account.unavailable} />
-                    <ProxyUrlBadge proxyUrl={account.proxyUrl} />
                   </div>
                   {account.accountEmail && (
                     <p className="truncate text-xs text-slate-300">{account.accountEmail}</p>
                   )}
                   <p className="truncate text-xs font-mono text-slate-500">{account.accountName}</p>
+                  <ProxyUrlBadge proxyUrl={account.proxyUrl} />
                 </div>
                 {currentUser && (account.isOwn || currentUser.isAdmin) && (
                   <div className="flex shrink-0 items-center gap-2">
