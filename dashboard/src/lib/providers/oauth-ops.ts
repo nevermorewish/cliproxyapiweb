@@ -348,6 +348,27 @@ export async function listOAuthWithOwnership(
 
     const ownershipMap = new Map(ownerships.map((o) => [o.accountName, o]));
 
+    // Fetch proxy_url for each account (not included in list endpoint)
+    const proxyUrlMap = new Map<string, string>();
+    try {
+      const proxyResults = await Promise.allSettled(
+        authFiles.map(async (file) => {
+          const dlEndpoint = `${MANAGEMENT_BASE_URL}/auth-files/download?name=${encodeURIComponent(file.name)}`;
+          const res = await fetchWithTimeout(dlEndpoint, {
+            method: "GET",
+            headers: { Authorization: `Bearer ${MANAGEMENT_API_KEY}` },
+          });
+          if (!res.ok) { await res.body?.cancel(); return; }
+          const data = await res.json();
+          if (isRecord(data) && typeof data.proxy_url === "string" && data.proxy_url) {
+            proxyUrlMap.set(file.name, data.proxy_url);
+          }
+        })
+      );
+    } catch (error) {
+      logger.warn({ err: error }, "listOAuthWithOwnership: failed to fetch proxy URLs");
+    }
+
      const accountsWithOwnership: OAuthAccountWithOwnership[] = authFiles.map((file, index) => {
        const ownership = ownershipMap.get(file.name);
        const isOwn = ownership?.userId === userId;
@@ -365,7 +386,7 @@ export async function listOAuthWithOwnership(
          status: file.status || "active",
          statusMessage: file.status_message || null,
          unavailable: file.unavailable ?? false,
-         proxyUrl: canSeeDetails ? file.proxy_url || null : null,
+         proxyUrl: canSeeDetails ? proxyUrlMap.get(file.name) || null : null,
          quotaGroups: canSeeDetails ? quotaGroupsByAuthId.get(file.id) ?? [] : [],
        };
      });
