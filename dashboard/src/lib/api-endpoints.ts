@@ -92,6 +92,7 @@ export const API_ENDPOINTS = {
 
     // Auth files
     AUTH_FILES: "/api/management/auth-files",
+    AUTH_FILES_FIELDS: "/api/management/auth-files/fields",
     AUTH_FILE_QUOTA_GROUPS: "/api/management/auth-files/quota-groups",
     AUTH_FILE_QUOTA_GROUPS_MANUAL: "/api/management/auth-files/quota-groups/manual",
     AUTH_FILE_QUOTA_GROUPS_AUTO_CLEAR: "/api/management/auth-files/quota-groups/auto/clear",
