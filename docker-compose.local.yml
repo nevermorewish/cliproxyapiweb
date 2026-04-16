@@ -6,6 +6,7 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: cliproxyapi-postgres
+    pull_policy: never            # Managed independently — avoid unnecessary recreates
     restart: unless-stopped
     networks:
       - backend
@@ -24,41 +25,14 @@ services:
       retries: 5
       start_period: 10s
 
-  # Requires ./config.local.yaml mounted below with `port: 8317` for management/OAuth
-  cliproxyapi:
-    image: eceasy/cli-proxy-api-plus:latest
-    container_name: cliproxyapi
-    restart: unless-stopped
-    networks:
-      - frontend
-      - backend
-    environment:
-      MANAGEMENT_PASSWORD: ${MANAGEMENT_API_KEY}
-      DEPLOY: production
-    ports:
-      - "127.0.0.1:8317:8317"
-      - "127.0.0.1:8085:8085"
-      - "127.0.0.1:1455:1455"
-      - "127.0.0.1:54545:54545"
-      - "127.0.0.1:51121:51121"
-      - "127.0.0.1:11451:11451"
-    volumes:
-      - ./config.local.yaml:/CLIProxyAPI/config.yaml
-      - cliproxyapi_auths:/root/.cli-proxy-api
-      - cliproxyapi_logs:/CLIProxyAPI/logs
-    depends_on:
-      postgres:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "-O", "/dev/null", "http://localhost:8317/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
+  # NOTE: cliproxyapi (eceasy/cli-proxy-api-plus) is managed externally.
+  # It must be running and connected to cliproxyapi_frontend + cliproxyapi_backend networks
+  # before starting this compose stack. Do NOT define it here — it causes name conflicts.
 
   docker-proxy:
     image: tecnativa/docker-socket-proxy:latest
     container_name: cliproxyapi-docker-proxy
+    pull_policy: never            # Managed independently — avoid unnecessary recreates
     restart: unless-stopped
     networks:
       - backend
@@ -114,7 +88,7 @@ services:
       start_period: 10s
 
   dashboard:
-    build: ./dashboard
+    image: crpi-dzjyl2rfnlfugj1m.cn-shanghai.personal.cr.aliyuncs.com/frogclaw/cliproxyapiweb:latest
     container_name: cliproxyapi-dashboard
     restart: unless-stopped
     networks:
@@ -136,8 +110,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      cliproxyapi:
-        condition: service_healthy
       docker-proxy:
         condition: service_healthy
     healthcheck:
@@ -149,8 +121,6 @@ services:
 
 volumes:
   postgres_data:
-  cliproxyapi_auths:
-  cliproxyapi_logs:
   dashboard_backups:
 
 networks:
