@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { ProviderRow } from "@/components/providers/provider-row";
 import type { CustomProvider, ProviderGroup } from "@/components/providers/custom-provider-section";
@@ -33,6 +34,8 @@ export function GroupList({
   onMoveProviderUp,
   onMoveProviderDown,
 }: GroupListProps) {
+  const t = useTranslations("providers");
+
   return (
     <>
       {groups.map((group, groupIndex) => {
@@ -40,9 +43,9 @@ export function GroupList({
         return (
           <div
             key={group.id}
-            className={`rounded-sm border border-slate-700/70 bg-slate-900/30 overflow-hidden transition-opacity duration-200 ${!group.isActive ? 'opacity-60 grayscale-[30%]' : ''}`}
+            className={`rounded-sm border border-[var(--surface-border)] bg-[var(--surface-base)] overflow-hidden transition-opacity duration-200 ${!group.isActive ? 'opacity-60 grayscale-[30%]' : ''}`}
           >
-            <div className="flex items-center justify-between border-b border-slate-700/70 bg-slate-900/60 px-3 py-2">
+            <div className="flex items-center justify-between border-b border-[var(--surface-border)] bg-[var(--surface-base)]/60 px-3 py-2">
               <div className="flex items-center gap-2 cursor-pointer select-none" onClick={() => onToggleCollapse(group.id)}>
                 {group.color && (
                   <span
@@ -51,10 +54,10 @@ export function GroupList({
                     aria-hidden="true"
                   />
                 )}
-                <span className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-300">
+                <span className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--text-secondary)]">
                   {group.name}
                 </span>
-                <span className="text-xs text-slate-500 bg-slate-800/50 px-1.5 py-0.5 rounded-md">
+                <span className="text-xs text-[var(--text-muted)] bg-[var(--surface-muted)] px-1.5 py-0.5 rounded-md">
                   {group.providers.length}
                 </span>
               </div>
@@ -63,9 +66,9 @@ export function GroupList({
                 <button
                   type="button"
                   onClick={() => onToggleGroupActive(group.id, group.isActive)}
-                  className={`text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-sm transition-colors ${group.isActive ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'}`}
+                  className={`text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-sm transition-colors ${group.isActive ? 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/15' : 'bg-[var(--surface-border)] text-[var(--text-muted)] hover:bg-[var(--surface-border)]'}`}
                 >
-                  {group.isActive ? "Active" : "Disabled"}
+                  {group.isActive ? t("statusActive") : t("groupStatusDisabled")}
                 </button>
 
                 <div className="flex items-center gap-0.5">
@@ -73,8 +76,8 @@ export function GroupList({
                     type="button"
                     onClick={() => onMoveGroupUp(group.id, groupIndex)}
                     disabled={groupIndex === 0}
-                    className="text-slate-400 hover:text-white disabled:opacity-30 p-1"
-                    title="Move Group Up"
+                    className="text-[var(--text-muted)] hover:text-[var(--text-primary)] disabled:opacity-30 p-1"
+                    title={t("moveGroupUp")}
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6"/></svg>
                   </button>
@@ -82,24 +85,24 @@ export function GroupList({
                     type="button"
                     onClick={() => onMoveGroupDown(group.id, groupIndex)}
                     disabled={groupIndex === groups.length - 1}
-                    className="text-slate-400 hover:text-white disabled:opacity-30 p-1"
-                    title="Move Group Down"
+                    className="text-[var(--text-muted)] hover:text-[var(--text-primary)] disabled:opacity-30 p-1"
+                    title={t("moveGroupDown")}
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                   </button>
                 </div>
 
-                <div className="flex items-center gap-1 border-l border-slate-700/70 pl-3">
+                  <div className="flex items-center gap-1 border-l border-[var(--surface-border)] pl-3">
                   <Button variant="ghost" onClick={() => onEditGroup(group)} className="px-2 py-1 text-[10px] h-auto">
-                    Edit
+                    {t("editButton")}
                   </Button>
-                  <Button variant="ghost" onClick={() => onDeleteGroup(group.id)} className="px-2 py-1 text-[10px] h-auto text-red-400 hover:text-red-300 hover:bg-red-400/10">
-                    Delete
+                  <Button variant="ghost" onClick={() => onDeleteGroup(group.id)} className="px-2 py-1 text-[10px] h-auto text-red-600 hover:text-red-600 hover:bg-red-400/10">
+                    {t("deleteButton")}
                   </Button>
                   <button
                     type="button"
                     onClick={() => onToggleCollapse(group.id)}
-                    className="p-1 ml-1 text-slate-400 hover:text-white transition-transform"
+                    className="p-1 ml-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-transform"
                     style={{ transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0)' }}
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
@@ -112,17 +115,17 @@ export function GroupList({
               <div className="overflow-x-auto">
                 <div className="min-w-[600px]">
                   {group.providers.length === 0 ? (
-                    <div className="px-3 py-6 text-center text-xs text-slate-500 italic">
-                      No providers in this group
+                    <div className="px-3 py-6 text-center text-xs text-[var(--text-muted)] italic">
+                      {t("noProvidersInGroup")}
                     </div>
                   ) : (
                     <>
-                      <div className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_80px_80px_120px] border-b border-slate-800 bg-slate-900/40 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">
-                        <span>Name</span>
-                        <span>Endpoint</span>
-                        <span>Models</span>
-                        <span>Order</span>
-                        <span className="text-right">Actions</span>
+                      <div className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_80px_80px_120px] border-b border-[var(--surface-border)] bg-[var(--surface-base)] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">
+                        <span>{t("tableHeaderName")}</span>
+                        <span>{t("tableHeaderEndpoint")}</span>
+                        <span>{t("tableHeaderModels")}</span>
+                        <span>{t("tableHeaderOrder")}</span>
+                        <span className="text-right">{t("tableHeaderActions")}</span>
                       </div>
                       {group.providers.map((provider, idx) => (
                         <ProviderRow

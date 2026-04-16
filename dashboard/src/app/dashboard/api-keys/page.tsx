@@ -7,6 +7,7 @@ import { useToast } from "@/components/ui/toast";
 import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { HelpTooltip } from "@/components/ui/tooltip";
+import { useTranslations } from "next-intl";
 import { API_ENDPOINTS } from "@/lib/api-endpoints";
 
 interface ApiKey {
@@ -71,13 +72,15 @@ export default function ApiKeysPage() {
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const { showToast } = useToast();
   const { copiedKey, copy } = useCopyToClipboard();
+  const t = useTranslations("apiKeys");
+  const tc = useTranslations("common");
 
   const fetchApiKeys = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     try {
       const res = await fetch(API_ENDPOINTS.USER.API_KEYS, { signal });
       if (!res.ok) {
-        showToast("Failed to load API keys", "error");
+        showToast(t("toastLoadFailed"), "error");
         setLoading(false);
         return;
       }
@@ -88,10 +91,10 @@ export default function ApiKeysPage() {
       setLoading(false);
     } catch {
       if (signal?.aborted) return;
-      showToast("Network error", "error");
+      showToast(t("toastNetworkError"), "error");
       setLoading(false);
     }
-  }, [showToast]);
+  }, [showToast, t]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -112,24 +115,24 @@ export default function ApiKeysPage() {
       const res = await fetch(API_ENDPOINTS.USER.API_KEYS, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: keyNameInput.trim() || "Default" }),
+        body: JSON.stringify({ name: keyNameInput.trim() || tc('default') }),
       });
 
       if (!res.ok) {
-        showToast("Failed to create API key", "error");
+        showToast(t("toastCreateFailed"), "error");
         setCreating(false);
         return;
       }
 
       const newKey = await res.json();
-      showToast("API key created successfully", "success");
+      showToast(t("toastCreateSuccess"), "success");
       setNewKeyValue(newKey.key);
       setIsCreateModalOpen(false);
       setIsModalOpen(true);
       setCreating(false);
       await fetchApiKeys();
     } catch {
-      showToast("Network error", "error");
+      showToast(t("toastNetworkError"), "error");
       setCreating(false);
     }
   };
@@ -152,14 +155,14 @@ export default function ApiKeysPage() {
       );
 
       if (!res.ok) {
-        showToast("Failed to delete API key", "error");
+        showToast(t("toastDeleteFailed"), "error");
         return;
       }
 
-      showToast("API key deleted successfully", "success");
+      showToast(t("toastDeleteSuccess"), "success");
       setApiKeys((prev) => prev.filter((item) => item.id !== id));
     } catch {
-      showToast("Network error", "error");
+      showToast(t("toastNetworkError"), "error");
     }
   };
 
@@ -170,25 +173,25 @@ export default function ApiKeysPage() {
 
   return (
     <div className="space-y-4">
-      <section className="rounded-lg border border-slate-700/70 bg-slate-900/40 p-4">
+      <section className="rounded-lg border border-[var(--surface-border)] bg-[var(--surface-base)] p-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight text-slate-100">API Keys</h1>
-            <p className="mt-1 text-xs text-slate-400">Manage dashboard access keys for clients and integrations. <HelpTooltip content="API keys authenticate external tools (like the opencode-cliproxyapi-sync plugin) to access your dashboard configuration programmatically" /></p>
+            <h1 className="text-xl font-semibold tracking-tight text-[var(--text-primary)]">{t('pageTitle')}</h1>
+            <p className="mt-1 text-xs text-[var(--text-muted)]">{t('pageDescription')} <HelpTooltip content={t('pageTooltip')} /></p>
           </div>
-          <Button onClick={() => { setKeyNameInput(""); setIsCreateModalOpen(true); }} disabled={creating} className="px-2.5 py-1 text-xs">
-            Create Key
+          <Button onClick={() => { setKeyNameInput(""); setIsCreateModalOpen(true); }} disabled={creating} className="px-2.5 py-1 text-xs" data-testid="api-key-create-trigger">
+            {t('createKeyButton')}
           </Button>
         </div>
       </section>
 
       {loading ? (
-        <div className="rounded-lg border border-slate-700/70 bg-slate-900/40 p-6 text-center text-sm text-slate-400">Loading...</div>
+        <div className="rounded-lg border border-[var(--surface-border)] bg-[var(--surface-base)] p-6 text-center text-sm text-[var(--text-muted)]">{t('loadingText')}</div>
       ) : apiKeys.length === 0 ? (
-        <div className="rounded-lg border border-slate-700/70 bg-slate-900/40 p-8">
+        <div className="rounded-lg border border-[var(--surface-border)] bg-[var(--surface-base)] p-8">
           <div className="flex flex-col items-center justify-center gap-4 text-center">
-            <div className="flex size-14 items-center justify-center rounded-full border border-slate-700/70 bg-slate-900/30">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400" aria-hidden="true">
+            <div className="flex size-14 items-center justify-center rounded-full border border-[var(--surface-border)] bg-[var(--surface-base)]">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--text-muted)]" aria-hidden="true">
                 <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
                 <path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2" />
                 <circle cx="12" cy="11" r="2" />
@@ -196,34 +199,34 @@ export default function ApiKeysPage() {
               </svg>
             </div>
             <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-slate-100">No API keys created yet</h3>
-              <p className="text-xs text-slate-400">Create your first API key to access the dashboard programmatically</p>
+              <h3 className="text-sm font-semibold text-[var(--text-primary)]">{t('emptyTitle')}</h3>
+              <p className="text-xs text-[var(--text-muted)]">{t('emptyDescription')}</p>
             </div>
             <Button onClick={() => { setKeyNameInput(""); setIsCreateModalOpen(true); }} disabled={creating} className="px-3 py-1.5 text-xs">
-              Create API Key
+              {t("createApiKeyButton")}
             </Button>
           </div>
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <section className="min-w-[600px] overflow-hidden rounded-lg border border-slate-700/70 bg-slate-900/40">
-            <div className="sticky top-0 z-10 grid grid-cols-[minmax(0,1fr)_180px_160px_110px] border-b border-slate-700/70 bg-slate-900/95 backdrop-blur-sm px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
-              <span>Name</span>
-              <span>Created</span>
-              <span>Last Used</span>
-              <span>Actions</span>
+          <section className="min-w-[600px] overflow-hidden rounded-lg border border-[var(--surface-border)] bg-[var(--surface-base)]">
+            <div className="sticky top-0 z-10 grid grid-cols-[minmax(0,1fr)_180px_160px_110px] border-b border-[var(--surface-border)] bg-[var(--surface-base)]/95 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">
+              <span>{t('tableHeaderName')}</span>
+              <span>{t('tableHeaderCreated')}</span>
+              <span>{t('tableHeaderLastUsed')}</span>
+              <span>{t('tableHeaderActions')}</span>
             </div>
           {apiKeys.map((apiKey) => (
-            <div key={apiKey.id} className="grid grid-cols-[minmax(0,1fr)_180px_160px_110px] items-center border-b border-slate-700/60 px-3 py-2 last:border-b-0">
+            <div key={apiKey.id} className="grid grid-cols-[minmax(0,1fr)_180px_160px_110px] items-center border-b border-[var(--surface-border)] px-3 py-2 last:border-b-0">
               <div className="min-w-0">
-                <p className="truncate text-xs font-medium text-slate-100">{apiKey.name}</p>
-                <p className="mt-0.5 truncate font-mono text-xs text-slate-400">{apiKey.keyPreview}</p>
+                <p className="truncate text-xs font-medium text-[var(--text-primary)]">{apiKey.name}</p>
+                <p className="mt-0.5 truncate font-mono text-xs text-[var(--text-muted)]">{apiKey.keyPreview}</p>
               </div>
-              <span className="text-xs text-slate-400">{new Date(apiKey.createdAt).toLocaleDateString()}</span>
-              <span className="text-xs text-slate-400">{apiKey.lastUsedAt ? new Date(apiKey.lastUsedAt).toLocaleDateString() : "Never"}</span>
+              <span className="text-xs text-[var(--text-muted)]">{new Date(apiKey.createdAt).toLocaleDateString()}</span>
+              <span className="text-xs text-[var(--text-muted)]">{apiKey.lastUsedAt ? new Date(apiKey.lastUsedAt).toLocaleDateString() : t('neverUsed')}</span>
               <div className="flex justify-end">
-                <Button variant="danger" onClick={() => confirmDelete(apiKey.id)} className="px-2.5 py-1 text-xs">
-                  Delete
+                <Button variant="danger" onClick={() => confirmDelete(apiKey.id)} className="px-2.5 py-1 text-xs" data-testid={`api-key-delete-trigger-${apiKey.id}`}>
+                  {t('deleteButton')}
                 </Button>
               </div>
             </div>
@@ -235,46 +238,46 @@ export default function ApiKeysPage() {
       {/* ── Create Key Modal ── */}
       <Modal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)}>
         <ModalHeader>
-          <ModalTitle>Create API Key</ModalTitle>
+          <ModalTitle>{t("createModalTitle")}</ModalTitle>
         </ModalHeader>
         <ModalContent>
           <div className="space-y-4">
             <div>
-              <label htmlFor="key-name-input" className="mb-2 block text-sm font-semibold text-slate-300">
-                Key Name
+              <label htmlFor="key-name-input" className="mb-2 block text-sm font-semibold text-[var(--text-secondary)]">
+                {t('keyNameLabel')}
               </label>
               <Input
                 type="text"
                 name="key-name-input"
                 value={keyNameInput}
                 onChange={setKeyNameInput}
-                placeholder="e.g. Development, Production, CLI"
+                placeholder={t("keyNamePlaceholder")}
                 disabled={creating}
               />
-              <p className="mt-1.5 text-xs text-slate-500">Give your key a descriptive name for easy identification</p>
+              <p className="mt-1.5 text-xs text-[var(--text-muted)]">{t('keyNameHint')}</p>
             </div>
           </div>
         </ModalContent>
         <ModalFooter>
           <Button variant="ghost" onClick={() => setIsCreateModalOpen(false)}>
-            Cancel
+            {t("cancelButton")}
           </Button>
           <Button onClick={handleCreateKey} disabled={creating}>
-            {creating ? "Creating..." : "Create Key"}
+            {creating ? t("creatingButton") : t("createButton")}
           </Button>
         </ModalFooter>
       </Modal>
 
       <Modal isOpen={isModalOpen && newKeyValue !== null} onClose={handleCloseModal}>
         <ModalHeader>
-          <ModalTitle>New API Key</ModalTitle>
+          <ModalTitle>{t("newKeyModalTitle")}</ModalTitle>
         </ModalHeader>
         <ModalContent>
           <div className="space-y-4">
-            <div className="rounded-sm border border-slate-700/70 bg-slate-900/40 p-4 text-sm">
-              <div className="mb-2 font-medium text-slate-100">Copy this key now</div>
+            <div className="rounded-sm border border-[var(--surface-border)] bg-[var(--surface-base)] p-4 text-sm">
+              <div className="mb-2 font-medium text-[var(--text-primary)]">{t('copyThisKey')}</div>
               <div className="relative group">
-                <div className="break-all rounded-sm border border-slate-700/70 bg-slate-900/40 p-3 pr-12 font-mono text-xs text-slate-200">
+                <div className="break-all rounded-sm border border-[var(--surface-border)] bg-[var(--surface-base)] p-3 pr-12 font-mono text-xs text-[var(--text-primary)]">
                   {newKeyValue}
                 </div>
                 <button
@@ -282,23 +285,23 @@ export default function ApiKeysPage() {
                   onClick={() => {
                     if (newKeyValue) {
                       copy(newKeyValue, "modal");
-                      showToast("API key copied", "success");
+                      showToast(t("toastCopied"), "success");
                     }
                   }}
-                  className="absolute right-2.5 top-2.5 rounded-sm border border-slate-700/70 bg-slate-800/60 p-1.5 text-slate-400 transition-colors duration-200 hover:bg-slate-700/70 hover:text-slate-200"
-                  title="Copy API key"
+                  className="absolute right-2.5 top-2.5 rounded-sm border border-[var(--surface-border)] bg-[var(--surface-muted)] p-1.5 text-[var(--text-muted)] transition-colors duration-200 hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]"
+                  title={t('copyButtonTitle')}
                 >
                   {copiedKey === "modal" ? <CheckIcon /> : <CopyIcon />}
                 </button>
               </div>
             </div>
-            <div className="rounded-sm border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
-              <span className="text-amber-200">This key will only be shown once. Store it securely.</span>
+            <div className="rounded-sm border border-amber-500/20 bg-amber-500/10 p-3 text-sm">
+              <span className="text-amber-700">{t('keyShownOnce')}</span>
             </div>
           </div>
         </ModalContent>
         <ModalFooter>
-          <Button onClick={handleCloseModal}>I have saved it</Button>
+          <Button onClick={handleCloseModal}>{t("savedButton")}</Button>
         </ModalFooter>
       </Modal>
 
@@ -309,10 +312,10 @@ export default function ApiKeysPage() {
           setPendingDeleteId(null);
         }}
         onConfirm={handleDeleteKey}
-        title="Delete API Key"
-        message="Are you sure you want to delete this API key?"
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
+        title={t("deleteConfirmTitle")}
+        message={t("deleteConfirmMessage")}
+        confirmLabel={t("deleteConfirmButton")}
+        cancelLabel={t("deleteConfirmCancelButton")}
         variant="danger"
       />
     </div>

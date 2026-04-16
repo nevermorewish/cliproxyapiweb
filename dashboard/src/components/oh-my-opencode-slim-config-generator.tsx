@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -23,6 +24,7 @@ import type {
   SlimBackgroundConfig,
   SlimFallbackConfig,
   SlimTmuxConfig,
+  SlimCouncilConfig,
 } from "@/lib/config-generators/oh-my-opencode-slim-types";
 
 interface OhMyOpenCodeSlimConfigGeneratorProps {
@@ -47,6 +49,7 @@ export function OhMyOpenCodeSlimConfigGenerator(props: OhMyOpenCodeSlimConfigGen
   }, [initialOverrides]);
   const { showToast } = useToast();
 
+  const t = useTranslations("ohMyOpenCodeSlim");
   const allModelIds = proxyModelIds ?? [];
   const availableModelIds = excludedModels
     ? allModelIds.filter((id: string) => !excludedModels.includes(id))
@@ -74,21 +77,21 @@ export function OhMyOpenCodeSlimConfigGenerator(props: OhMyOpenCodeSlimConfigGen
             latestSaveRef.current = previous;
             setOverrides(previous);
           }
-          showToast("Failed to save slim config — reverted", "error");
+          showToast(t("toastSaveFailed"), "error");
           return;
         }
-        showToast("Slim assignment saved", "success");
+        showToast(t("toastSaved"), "success");
       } catch {
         if (latestSaveRef.current === newOverrides) {
           latestSaveRef.current = previous;
           setOverrides(previous);
         }
-        showToast("Network error — reverted", "error");
+        showToast(t("toastNetworkError"), "error");
       } finally {
         setSaving(false);
       }
     },
-    [showToast],
+    [showToast, t],
   );
 
   // --- Agent model/field handlers ---
@@ -178,6 +181,12 @@ export function OhMyOpenCodeSlimConfigGenerator(props: OhMyOpenCodeSlimConfigGen
     saveOverrides(newOverrides);
   };
 
+  const handleCouncilChange = (council: SlimCouncilConfig | undefined) => {
+    const newOverrides = { ...overrides, council };
+    setOverrides(newOverrides);
+    saveOverrides(newOverrides);
+  };
+
   const handleDisabledMcpAdd = (mcp: string) => {
     const trimmed = mcp.trim();
     if (!trimmed) return false;
@@ -211,14 +220,14 @@ export function OhMyOpenCodeSlimConfigGenerator(props: OhMyOpenCodeSlimConfigGen
   if (apiKeys.length === 0) {
     return (
       <div className="space-y-3">
-        <div className="border-l-4 border-amber-400/60 backdrop-blur-xl bg-amber-500/10 p-4 rounded-r-xl">
-          <div className="text-sm font-medium text-white mb-1">API Key Required</div>
-          <p className="text-sm text-white/70">Create an API key to generate your slim configuration.</p>
+        <div className="border-l-4 border-amber-300 bg-amber-500/10 p-4 rounded-r-xl">
+          <div className="text-sm font-medium text-[var(--text-primary)] mb-1">{t("apiKeyRequiredTitle")}</div>
+          <p className="text-sm text-[var(--text-secondary)]">{t("apiKeyRequiredDesc")}</p>
           <Link
             href="/dashboard/api-keys"
-            className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-violet-500/20 border border-violet-400/30 text-violet-300 text-sm font-medium hover:bg-violet-500/30 transition-colors"
+            className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--surface-muted)] border border-[var(--surface-border)] text-[var(--text-primary)] text-sm font-medium hover:bg-[var(--surface-hover)] transition-colors"
           >
-            Create API Key →
+            {t("createApiKeyLink")}
           </Link>
         </div>
       </div>
@@ -228,15 +237,15 @@ export function OhMyOpenCodeSlimConfigGenerator(props: OhMyOpenCodeSlimConfigGen
   if (!hasModels || !slimConfig) {
     return (
       <div className="space-y-4">
-        <div className="border-l-4 border-amber-400/60 bg-amber-500/10 backdrop-blur-xl p-4 text-sm rounded-r-xl">
-          <p className="text-white/90 font-medium mb-1">No providers configured</p>
-          <p className="text-white/60 text-xs">
-            Configure at least one AI provider before generating a slim config. Head to{" "}
+        <div className="border-l-4 border-amber-300 bg-amber-500/10 p-4 text-sm rounded-r-xl">
+          <p className="text-[var(--text-primary)] font-medium mb-1">{t("noProvidersTitle")}</p>
+          <p className="text-[var(--text-muted)] text-xs">
+            {t("noProvidersDesc")}{" "}
             <Link
               href="/dashboard/providers"
-              className="text-violet-400 font-medium hover:text-violet-300 underline underline-offset-2 decoration-violet-400/30"
+              className="text-[var(--text-secondary)] font-medium hover:text-[var(--text-primary)] underline underline-offset-2 decoration-[var(--surface-border)]"
             >
-              Providers
+              {t("noProvidersLink")}
             </Link>
             .
           </p>
@@ -251,6 +260,7 @@ export function OhMyOpenCodeSlimConfigGenerator(props: OhMyOpenCodeSlimConfigGen
     name: string;
     model: string;
     isOverride: boolean;
+    isUnresolved?: boolean;
     config: SlimAgentConfig;
     tier: 1 | 2 | 3 | 4;
     label: string;
@@ -264,6 +274,7 @@ export function OhMyOpenCodeSlimConfigGenerator(props: OhMyOpenCodeSlimConfigGen
         name: agent,
         model: overrideModel,
         isOverride: true,
+        isUnresolved: false,
         config: agentConfig,
         tier: role.tier,
         label: role.label,
@@ -275,6 +286,17 @@ export function OhMyOpenCodeSlimConfigGenerator(props: OhMyOpenCodeSlimConfigGen
           name: agent,
           model,
           isOverride: !!overrideModel,
+          isUnresolved: false,
+          config: agentConfig,
+          tier: role.tier,
+          label: role.label,
+        });
+      } else {
+        agentAssignments.push({
+          name: agent,
+          model: typeof overrideModel === "string" ? overrideModel : `unresolved-tier-${role.tier}`,
+          isOverride: !!overrideModel,
+          isUnresolved: true,
           config: agentConfig,
           tier: role.tier,
           label: role.label,
@@ -292,10 +314,9 @@ export function OhMyOpenCodeSlimConfigGenerator(props: OhMyOpenCodeSlimConfigGen
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-white/70">
-        Slim uses 6 specialized agents (orchestrator, oracle, designer, explorer, librarian, fixer) with a dedicated fallback system.
-        Changes save automatically.
-        {saving && <span className="ml-2 text-amber-300/70 text-xs">Saving...</span>}
+      <p className="text-sm text-[var(--text-secondary)]">
+        {t("description")}
+        {saving && <span className="ml-2 text-amber-700/70 text-xs">{t("saving")}</span>}
       </p>
 
       <SlimTierAssignments
@@ -312,6 +333,7 @@ export function OhMyOpenCodeSlimConfigGenerator(props: OhMyOpenCodeSlimConfigGen
         onTmuxChange={handleTmuxChange}
         onBackgroundChange={handleBackgroundChange}
         onFallbackChange={handleFallbackChange}
+        onCouncilChange={handleCouncilChange}
         onDisabledMcpAdd={handleDisabledMcpAdd}
         onDisabledMcpRemove={handleDisabledMcpRemove}
         onScalarChange={handleScalarChange}
@@ -320,7 +342,7 @@ export function OhMyOpenCodeSlimConfigGenerator(props: OhMyOpenCodeSlimConfigGen
       <button
         type="button"
         onClick={() => setIsExpanded(!isExpanded)}
-        className="flex items-center gap-2 text-xs font-medium text-white/60 hover:text-white/90 transition-colors"
+        className="flex items-center gap-2 text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
       >
         <svg
           width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -330,7 +352,7 @@ export function OhMyOpenCodeSlimConfigGenerator(props: OhMyOpenCodeSlimConfigGen
         >
           <polyline points="9 18 15 12 9 6" />
         </svg>
-        {isExpanded ? "Hide config" : "Show config"}
+        {isExpanded ? t("hideConfig") : t("showConfig")}
       </button>
 
       {isExpanded && (
@@ -346,7 +368,7 @@ export function OhMyOpenCodeSlimConfigGenerator(props: OhMyOpenCodeSlimConfigGen
                 <polyline points="7 10 12 15 17 10" />
                 <line x1="12" y1="15" x2="12" y2="3" />
               </svg>
-              Download oh-my-opencode-slim.json
+              {t("downloadButton")}
             </Button>
           </div>
         </div>

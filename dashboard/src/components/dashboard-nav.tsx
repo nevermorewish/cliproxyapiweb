@@ -1,13 +1,14 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { useMobileSidebar } from "@/components/mobile-sidebar-context";
 import { useAuth } from "@/hooks/use-auth";
-import { useTranslation } from "@/lib/i18n-client";
+import { useFocusTrap } from "@/hooks/use-focus-trap";
 
 function IconPlayCircle({ className }: { className?: string }) {
   return (
@@ -116,24 +117,37 @@ function IconLogs({ className }: { className?: string }) {
   );
 }
 
+function CollapseIcon({ collapsed }: { collapsed: boolean }) {
+  return (
+    <svg
+      className={cn("h-4 w-4 shrink-0 transition-transform duration-300", collapsed && "rotate-180")}
+      viewBox="0 0 20 20"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path fillRule="evenodd" d="M12.707 14.707a1 1 0 01-1.414 0L7.293 10.707a1 1 0 010-1.414l4-4a1 1 0 111.414 1.414L9.414 10l3.293 3.293a1 1 0 010 1.414z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
 const NAV_SECTIONS = [
-  { key: "general", labelKey: "nav.general" },
-  { key: "access", labelKey: "nav.access" },
-  { key: "admin", labelKey: "nav.admin" },
+  { key: "general", labelKey: "sectionGeneral" },
+  { key: "access", labelKey: "sectionAccess" },
+  { key: "admin", labelKey: "sectionAdmin" },
 ] as const;
 
 const NAV_ITEMS = [
-  { href: "/dashboard", labelKey: "nav.quickStart", icon: IconPlayCircle, adminOnly: false, section: "general" },
-  { href: "/dashboard/providers", labelKey: "nav.providers", icon: IconLayers, adminOnly: false, section: "general" },
-  { href: "/dashboard/usage", labelKey: "nav.usage", icon: IconBarChart, adminOnly: false, section: "general" },
-  { href: "/dashboard/quota", labelKey: "nav.quota", icon: IconGauge, adminOnly: false, section: "general" },
-  { href: "/dashboard/api-keys", labelKey: "nav.apiKeys", icon: IconKey, adminOnly: false, section: "access" },
-  { href: "/dashboard/settings", labelKey: "nav.settings", icon: IconSettings, adminOnly: false, section: "access" },
-  { href: "/dashboard/monitoring", labelKey: "nav.monitoring", icon: IconActivity, adminOnly: true, section: "admin" },
-  { href: "/dashboard/containers", labelKey: "nav.containers", icon: IconBox, adminOnly: true, section: "admin" },
-  { href: "/dashboard/config", labelKey: "nav.config", icon: IconFileCode, adminOnly: true, section: "admin" },
-  { href: "/dashboard/admin/users", labelKey: "nav.users", icon: IconUsers, adminOnly: true, section: "admin" },
-  { href: "/dashboard/admin/logs", labelKey: "nav.logs", icon: IconLogs, adminOnly: true, section: "admin" },
+  { href: "/dashboard", labelKey: "quickStart", icon: IconPlayCircle, adminOnly: false, section: "general" },
+  { href: "/dashboard/providers", labelKey: "providers", icon: IconLayers, adminOnly: false, section: "general" },
+  { href: "/dashboard/usage", labelKey: "usage", icon: IconBarChart, adminOnly: false, section: "general" },
+  { href: "/dashboard/quota", labelKey: "quota", icon: IconGauge, adminOnly: false, section: "general" },
+  { href: "/dashboard/api-keys", labelKey: "apiKeys", icon: IconKey, adminOnly: false, section: "access" },
+  { href: "/dashboard/settings", labelKey: "settings", icon: IconSettings, adminOnly: false, section: "access" },
+  { href: "/dashboard/monitoring", labelKey: "monitoring", icon: IconActivity, adminOnly: true, section: "admin" },
+  { href: "/dashboard/containers", labelKey: "containers", icon: IconBox, adminOnly: true, section: "admin" },
+  { href: "/dashboard/config", labelKey: "config", icon: IconFileCode, adminOnly: true, section: "admin" },
+  { href: "/dashboard/admin/users", labelKey: "users", icon: IconUsers, adminOnly: true, section: "admin" },
+  { href: "/dashboard/admin/logs", labelKey: "logs", icon: IconLogs, adminOnly: true, section: "admin" },
 ] as const;
 
 export function DashboardNav() {
@@ -141,7 +155,10 @@ export function DashboardNav() {
   const { isOpen, isCollapsed, toggleCollapsed, close } = useMobileSidebar();
   const { user } = useAuth();
   const isAdmin = user?.isAdmin ?? false;
-  const { t } = useTranslation();
+  const t = useTranslations("nav");
+  const navRef = useRef<HTMLElement>(null);
+
+  useFocusTrap(isOpen, navRef as React.RefObject<HTMLElement | null>);
 
   const handleNavClick = () => {
     close();
@@ -151,11 +168,8 @@ export function DashboardNav() {
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        close();
-      }
+      if (e.key === "Escape") close();
     };
-
     if (isOpen) {
       window.addEventListener("keydown", handleEscape);
       return () => window.removeEventListener("keydown", handleEscape);
@@ -166,96 +180,104 @@ export function DashboardNav() {
     <>
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden"
+          className="fixed inset-0 bg-black/20 z-40 lg:hidden"
           onClick={close}
           aria-hidden="true"
         />
       )}
 
       <nav
+        ref={navRef}
+        role={isOpen ? "dialog" : undefined}
+        aria-modal={isOpen ? "true" : undefined}
+        aria-label={t("navigationAriaLabel")}
         className={cn(
-          "w-56 glass-nav p-4 flex flex-col lg:transition-[width] lg:duration-200",
-          isCollapsed ? "lg:w-[4.5rem]" : "lg:w-56",
-          "lg:block",
+          "glass-nav flex flex-col overflow-hidden",
+          "lg:transition-[width] lg:duration-300 lg:ease-in-out",
+          isCollapsed ? "lg:w-16" : "lg:w-56",
+          "w-56 lg:block",
           "fixed lg:static inset-y-0 left-0 z-50",
-          "transform transition-transform duration-300 ease-in-out",
+          "transition-transform duration-300 ease-in-out",
           isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
       >
-        <div className="mb-4">
-          <div className={cn("flex", isCollapsed ? "flex-col items-center gap-2" : "items-center justify-between")}> 
-            <div className={cn("flex items-center gap-3", isCollapsed && "lg:flex-col lg:gap-1")}> 
-            <Image
-              src="/icon.png"
-              alt="CLIProxy Logo"
-              width={isCollapsed ? 38 : 32}
-              height={isCollapsed ? 38 : 32}
-              className="rounded-md"
-            />
-            <div className={cn(isCollapsed && "lg:hidden")}> 
-              <h1 className="text-base font-semibold tracking-tight text-slate-100">
-                CLIProxy
-              </h1>
-              <p className="mt-0.5 text-xs text-slate-400">Management</p>
-            </div>
-            </div>
-            <button
-              type="button"
-              onClick={toggleCollapsed}
-              className="hidden rounded-md border border-slate-700/70 bg-slate-800/60 p-1.5 text-slate-300 transition-colors hover:bg-slate-700/70 hover:text-slate-100 lg:inline-flex"
-              aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-              aria-expanded={!isCollapsed}
-            >
-              <svg className={cn("h-4 w-4 transition-transform", isCollapsed && "rotate-180")} viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                <path fillRule="evenodd" d="M12.707 14.707a1 1 0 01-1.414 0L7.293 10.707a1 1 0 010-1.414l4-4a1 1 0 111.414 1.414L9.414 10l3.293 3.293a1 1 0 010 1.414z" clipRule="evenodd" />
-              </svg>
-            </button>
+        {/* Header */}
+        <div className="flex items-center gap-3 px-4 py-4">
+          <Image
+            src="/icon.png"
+            alt="CLIProxy Logo"
+            width={32}
+            height={32}
+            className="shrink-0 rounded-md"
+          />
+          <div className={cn("min-w-0 transition-opacity duration-200", isCollapsed && "lg:opacity-0")}>
+            <h1 className="truncate text-base font-semibold tracking-tight text-[var(--text-primary)]">
+              CLIProxy
+            </h1>
+            <p className="truncate text-xs text-[var(--text-muted)]">{t('appSubtitle')}</p>
           </div>
         </div>
 
-        <ul className="space-y-4">
-          {NAV_SECTIONS.map((section) => {
-            const items = visibleItems.filter((item) => item.section === section.key);
-            if (items.length === 0) {
-              return null;
-            }
+        {/* Nav items */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-2 pb-2">
+          <ul className="space-y-4">
+            {NAV_SECTIONS.map((section) => {
+              const items = visibleItems.filter((item) => item.section === section.key);
+              if (items.length === 0) return null;
 
-            return (
-              <li key={section.key} className="space-y-1.5">
-                <p className={cn("px-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500", isCollapsed && "lg:hidden")}>
-                  {t(section.labelKey)}
-                </p>
-                <ul className="space-y-1">
-                  {items.map((item) => {
-                    const isActive = pathname === item.href;
-                    const IconComponent = item.icon;
+              return (
+                <li key={section.key} className="space-y-1">
+                  <p className={cn(
+                    "px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)] truncate transition-opacity duration-200",
+                    isCollapsed && "lg:opacity-0"
+                  )}>
+                    {t(section.labelKey)}
+                  </p>
+                  <ul className="space-y-0.5">
+                    {items.map((item) => {
+                      const isActive = pathname === item.href;
+                      const IconComponent = item.icon;
 
-                    return (
-                      <li key={item.href}>
-                        <Link
-                          href={item.href}
-                          onClick={handleNavClick}
-                          className={cn(
-                            "flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded-md transition-colors duration-200",
-                            isCollapsed && "lg:justify-center lg:px-0",
-                            isActive
-                              ? "glass-nav-item-active text-slate-100"
-                              : "glass-nav-item text-slate-300 hover:text-slate-100"
-                          )}
-                          title={isCollapsed ? t(item.labelKey) : undefined}
-                        >
-                          <IconComponent className="h-4 w-4" />
-                          <span className={cn(isCollapsed && "lg:hidden")}>{t(item.labelKey)}</span>
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </li>
-            );
-          })}
-        </ul>
+                      return (
+                        <li key={item.href}>
+                          <Link
+                            href={item.href}
+                            onClick={handleNavClick}
+                            className={cn(
+                              "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-150",
+                              isActive
+                                ? "glass-nav-item-active text-[var(--text-primary)]"
+                                : "glass-nav-item text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                            )}
+                            title={isCollapsed ? t(item.labelKey) : undefined}
+                          >
+                            <IconComponent className="h-4 w-4 shrink-0" />
+                            <span className={cn("truncate transition-opacity duration-200", isCollapsed && "lg:opacity-0")}>
+                              {t(item.labelKey)}
+                            </span>
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
 
+        {/* Collapse toggle — pinned to bottom */}
+        <div className="hidden border-t border-[var(--surface-border)] px-2 py-2 lg:block">
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            className="flex w-full items-center rounded-md px-3 py-2 text-[var(--text-secondary)] transition-colors duration-150 hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]"
+            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-expanded={!isCollapsed}
+          >
+            <CollapseIcon collapsed={isCollapsed} />
+          </button>
+        </div>
       </nav>
     </>
   );

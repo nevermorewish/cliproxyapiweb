@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
@@ -19,7 +20,6 @@ import {
 import { CustomProviderSection } from "@/components/providers/custom-provider-section";
 import { OAuthSection } from "@/components/providers/oauth-section";
 import { PerplexityProSection } from "@/components/providers/perplexity-pro-section";
-import { useTranslation } from "@/lib/i18n-client";
 
 interface CurrentUser {
   id: string;
@@ -56,10 +56,9 @@ const loadProvidersData = async (signal?: AbortSignal): Promise<Record<ProviderI
 
 export default function ProvidersPage() {
   const { user: authUser } = useAuth();
-  const currentUser = useMemo<CurrentUser | null>(
-    () => authUser ? { id: authUser.id, username: authUser.username, isAdmin: authUser.isAdmin } : null,
-    [authUser?.id, authUser?.username, authUser?.isAdmin]
-  );
+  const currentUser: CurrentUser | null = authUser
+    ? { id: authUser.id, username: authUser.username, isAdmin: authUser.isAdmin }
+    : null;
   const [configs, setConfigs] = useState<Record<ProviderId, ProviderState>>(() => ({
     [PROVIDER_IDS.CLAUDE]: { keys: [] },
     [PROVIDER_IDS.GEMINI]: { keys: [] },
@@ -70,8 +69,9 @@ export default function ProvidersPage() {
   const [maxKeysPerUser, setMaxKeysPerUser] = useState<number>(10);
   const [oauthAccountCount, setOauthAccountCount] = useState(0);
   const [customProviderCount, setCustomProviderCount] = useState(0);
+  const [incognitoBrowserEnabled, setIncognitoBrowserEnabled] = useState(false);
   const { showToast } = useToast();
-  const { t } = useTranslation();
+  const t = useTranslations("providers");
 
   const loadMaxKeysPerUser = useCallback(async (isAdminUser: boolean, signal?: AbortSignal) => {
     if (!isAdminUser) return;
@@ -87,8 +87,22 @@ export default function ProvidersPage() {
           }
         }
       }
-    } catch (err) {
+    } catch {
       if (signal?.aborted) return;
+    }
+  }, []);
+
+  const loadIncognitoSetting = useCallback(async (signal?: AbortSignal) => {
+    try {
+      const res = await fetch(API_ENDPOINTS.PROXY.OAUTH_SETTINGS, { signal });
+      if (res.ok) {
+        const data = await res.json();
+        setIncognitoBrowserEnabled(Boolean(data.incognitoBrowser));
+      }
+    } catch {
+      if (!signal?.aborted) {
+        setIncognitoBrowserEnabled(false);
+      }
     }
   }, []);
 
@@ -96,6 +110,7 @@ export default function ProvidersPage() {
     setLoading(true);
     const newConfigs = await loadProvidersData();
     setConfigs(newConfigs);
+    await loadIncognitoSetting();
     setLoading(false);
   };
 
@@ -105,9 +120,12 @@ export default function ProvidersPage() {
       const newConfigs = await loadProvidersData(controller.signal);
       if (controller.signal.aborted) return;
       setConfigs(newConfigs);
+
+      await loadIncognitoSetting(controller.signal);
+
       setLoading(false);
 
-      if (currentUser?.isAdmin) {
+      if (authUser?.isAdmin) {
         await loadMaxKeysPerUser(true, controller.signal);
       }
     };
@@ -118,7 +136,7 @@ export default function ProvidersPage() {
       window.clearTimeout(timeoutId);
       controller.abort();
     };
-  }, [currentUser, loadMaxKeysPerUser]);
+  }, [authUser, loadMaxKeysPerUser, loadIncognitoSetting]);
 
   const providerStats = API_KEY_PROVIDERS.map((provider) => ({
     id: provider.id,
@@ -135,48 +153,48 @@ export default function ProvidersPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-lg border border-slate-700/70 bg-slate-900/40 p-4">
-        <h1 className="text-xl font-semibold tracking-tight text-slate-100">
-          {t("providers.title")}
+      <section className="rounded-lg border border-[var(--surface-border)] bg-[var(--surface-base)] p-4">
+        <h1 className="text-xl font-semibold tracking-tight text-[var(--text-primary)]">
+          {t("pageTitle")}
         </h1>
-        <p className="mt-1 text-sm text-slate-400">
-          {t("providers.subtitle")}
+        <p className="mt-1 text-sm text-[var(--text-muted)]">
+          {t("pageDescription")}
         </p>
       </section>
 
       <section className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-        <div className="rounded-lg border border-slate-700/70 bg-slate-900/40 px-2.5 py-2">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">{t("providers.apiKeysLabel")}</p>
-          <p className="mt-0.5 text-xs font-semibold text-slate-100">
-            {t("providers.apiKeysConfigured", { count: totalApiKeys })}{currentUser ? ` · ${t("providers.apiKeysOwn", { count: ownApiKeyCount })}` : ""}
+        <div className="rounded-lg border border-[var(--surface-border)] bg-[var(--surface-base)] px-2.5 py-2">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">{t("statsApiKeysLabel")}</p>
+          <p className="mt-0.5 text-xs font-semibold text-[var(--text-primary)]">
+            {t("statsApiKeysValue", { count: totalApiKeys })}{currentUser ? ` ${t("statsApiKeysOwn", { own: ownApiKeyCount })}` : ""}
           </p>
         </div>
-        <div className="rounded-lg border border-slate-700/70 bg-slate-900/40 px-2.5 py-2">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">{t("providers.activeProviders")}</p>
-          <p className="mt-0.5 text-xs font-semibold text-slate-100">{activeApiProviders}/{API_KEY_PROVIDERS.length}</p>
+        <div className="rounded-lg border border-[var(--surface-border)] bg-[var(--surface-base)] px-2.5 py-2">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">{t("statsActiveProvidersLabel")}</p>
+          <p className="mt-0.5 text-xs font-semibold text-[var(--text-primary)]">{activeApiProviders}/{API_KEY_PROVIDERS.length}</p>
         </div>
-        <div className="rounded-lg border border-slate-700/70 bg-slate-900/40 px-2.5 py-2">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">{t("providers.oauthAccounts")}</p>
-          <p className="mt-0.5 text-xs font-semibold text-slate-100">{t("providers.oauthConnected", { count: oauthAccountCount })}</p>
+        <div className="rounded-lg border border-[var(--surface-border)] bg-[var(--surface-base)] px-2.5 py-2">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">{t("statsOAuthAccountsLabel")}</p>
+          <p className="mt-0.5 text-xs font-semibold text-[var(--text-primary)]">{t("statsOAuthValue", { count: oauthAccountCount })}</p>
         </div>
-        <div className="rounded-lg border border-slate-700/70 bg-slate-900/40 px-2.5 py-2">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">{t("providers.customProviders")}</p>
-          <p className="mt-0.5 text-xs font-semibold text-slate-100">{t("providers.customConfigured", { count: customProviderCount })}</p>
+        <div className="rounded-lg border border-[var(--surface-border)] bg-[var(--surface-base)] px-2.5 py-2">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">{t("statsCustomProvidersLabel")}</p>
+          <p className="mt-0.5 text-xs font-semibold text-[var(--text-primary)]">{t("statsCustomValue", { count: customProviderCount })}</p>
         </div>
       </section>
 
       {loading ? (
-        <div className="rounded-lg border border-slate-700/70 bg-slate-900/40 p-6">
+        <div className="rounded-lg border border-[var(--surface-border)] bg-[var(--surface-base)] p-6">
           <div className="flex items-center justify-center">
             <div className="flex flex-col items-center gap-4">
-              <div className="size-8 animate-spin rounded-full border-4 border-white/20 border-t-blue-500"></div>
-              <p className="text-white/80">{t("providers.loadingConfig")}</p>
+              <div className="size-8 animate-spin rounded-full border-4 border-[#ddd] border-t-blue-500"></div>
+              <p className="text-[var(--text-secondary)]">{t("loadingText")}</p>
             </div>
           </div>
         </div>
       ) : (
         <>
-          <section className="rounded-lg border border-slate-700/70 bg-slate-900/40 p-6 space-y-6">
+          <section className="rounded-lg border border-[var(--surface-border)] bg-[var(--surface-base)] p-6 space-y-6">
             <ApiKeySection
               showToast={showToast}
               currentUser={currentUser}
@@ -185,16 +203,17 @@ export default function ProvidersPage() {
               refreshProviders={refreshProviders}
             />
 
-            <div className="border-t border-slate-700/70 pt-6">
+            <div className="border-t border-[var(--surface-border)] pt-6">
               <OAuthSection
                 showToast={showToast}
                 currentUser={currentUser}
                 refreshProviders={refreshProviders}
                 onAccountCountChange={setOauthAccountCount}
+                incognitoBrowserEnabled={incognitoBrowserEnabled}
               />
             </div>
 
-            <div className="border-t border-slate-700/70 pt-6">
+            <div className="border-t border-[var(--surface-border)] pt-6">
               <CustomProviderSection
                 showToast={showToast}
                 onProviderCountChange={setCustomProviderCount}
@@ -205,21 +224,21 @@ export default function ProvidersPage() {
           </section>
 
           {currentUser?.isAdmin && (
-            <section id="provider-admin" className="space-y-3 rounded-lg border border-slate-700/70 bg-slate-900/40 p-4">
+            <section id="provider-admin" className="space-y-3 rounded-lg border border-[var(--surface-border)] bg-[var(--surface-base)] p-4">
               <div>
-                <h2 className="text-sm font-semibold text-slate-100">{t("providers.adminSettings")}</h2>
-                <p className="text-xs text-slate-400">{t("providers.adminSubtitle")}</p>
+                <h2 className="text-sm font-semibold text-[var(--text-primary)]">{t("adminSettingsTitle")}</h2>
+                <p className="text-xs text-[var(--text-muted)]">{t("adminSettingsDescription")}</p>
               </div>
 
-              <div className="rounded-md border border-slate-700/60 bg-slate-900/30 p-4">
-                <h3 className="text-sm font-semibold text-slate-100">{t("providers.keyContribution")}</h3>
-                <p className="mt-1 text-sm text-slate-400">
-                  {t("providers.keyContributionDesc")}
+              <div className="rounded-md border border-[var(--surface-border)] bg-[var(--surface-base)] p-4">
+                <h3 className="text-sm font-semibold text-[var(--text-primary)]">{t("keyLimitsTitle")}</h3>
+                <p className="mt-1 text-sm text-[var(--text-muted)]">
+                  {t("keyLimitsDescription")}
                 </p>
                 <div className="flex items-center gap-4">
                   <div className="flex-1">
-                    <label htmlFor="max-keys" className="mb-2 block text-sm font-semibold text-slate-300">
-                     {t("providers.maxKeysPerUser")}
+                    <label htmlFor="max-keys" className="mb-2 block text-sm font-semibold text-[var(--text-secondary)]">
+                      {t("maxKeysLabel")}
                     </label>
                     <Input
                       type="number"
@@ -232,8 +251,8 @@ export default function ProvidersPage() {
                         }
                       }}
                     />
-                    <p className="mt-1.5 text-xs text-slate-500">
-                      {t("providers.maxKeysDesc", { count: maxKeysPerUser })}
+                    <p className="mt-1.5 text-xs text-[var(--text-muted)]">
+                      {t("maxKeysHint", { current: maxKeysPerUser })}
                     </p>
                   </div>
                   <Button
@@ -250,17 +269,17 @@ export default function ProvidersPage() {
                           }),
                         });
                         if (res.ok) {
-                          showToast(t("providers.settingsUpdated"), "success");
+                          showToast(t("toastSettingSaved"), "success");
                         } else {
                           const data = await res.json();
-                          showToast(extractApiError(data, t("providers.updateFailed")), "error");
+                          showToast(extractApiError(data, t("toastSettingSaveFailed")), "error");
                         }
                       } catch {
-                        showToast(t("common.networkError"), "error");
+                        showToast(t("toastNetworkError"), "error");
                       }
                     }}
                   >
-                    {t("common.save")}
+                    {t("saveButton")}
                   </Button>
                 </div>
               </div>

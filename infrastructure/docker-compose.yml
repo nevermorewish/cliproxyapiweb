@@ -174,6 +174,7 @@ services:
       - ./.env
     volumes:
       - ${INSTALL_DIR:-.}/infrastructure:/opt/cliproxyapi/infrastructure:ro
+      - backup_data:/app/backups
     depends_on:
       postgres:
         condition: service_healthy
@@ -187,6 +188,40 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s  # Allow time for DB init + Next.js startup
+
+  # Usage Collection Cron Service — collects usage data every 5 minutes
+  usage-collector:
+    image: alpine:3.19
+    container_name: cliproxyapi-usage-collector
+    restart: unless-stopped
+    # Resource limits (very lightweight - just cron + curl calls)
+    cpus: 0.1
+    mem_limit: 64m
+    mem_reservation: 16m
+    networks:
+      - frontend
+      - backend
+    environment:
+      COLLECTOR_API_KEY: ${COLLECTOR_API_KEY:-}
+      TZ: ${TZ}
+    env_file:
+      - ./.env
+    command: >
+      sh -c "
+        apk add --no-cache curl dcron &&
+        echo '*/5 * * * * curl -sf -X POST http://dashboard:3000/api/usage/collect -H \"Authorization: Bearer $$COLLECTOR_API_KEY\" > /dev/null 2>&1' > /tmp/crontab &&
+        crontab /tmp/crontab &&
+        crond -f -d 8
+      "
+    depends_on:
+      dashboard:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep crond > /dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   # Caddy Reverse Proxy
   caddy:
@@ -237,6 +272,10 @@ volumes:
   caddy_data:
     driver: local
   caddy_config:
+    driver: local
+  
+  # Dashboard backup storage
+  backup_data:
     driver: local
 
 # Network Definitions

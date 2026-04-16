@@ -12,6 +12,9 @@
 
 # testing
 /coverage
+/playwright-report/
+/test-results/
+/blob-report/
 
 # next.js
 /.next/
@@ -47,3 +50,6 @@ next-env.d.ts
 # local-only helper files
 DEV.md
 dev.sh
+
+# local config (copied from .example)
+config.dev.yaml

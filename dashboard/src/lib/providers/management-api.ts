@@ -91,6 +91,7 @@ export interface ListKeysResult {
 
 export interface OAuthAccountWithOwnership {
   id: string;
+  authId: string | null;
   accountName: string;
   accountEmail: string | null;
   provider: string;
@@ -101,6 +102,23 @@ export interface OAuthAccountWithOwnership {
   statusMessage: string | null;
   unavailable: boolean;
   proxyUrl: string | null;
+  quotaGroups?: OAuthAccountQuotaGroupState[];
+}
+
+export interface OAuthAccountQuotaGroupState {
+  authId: string;
+  groupId: string;
+  label: string;
+  effectiveStatus: string;
+  manualSuspended: boolean;
+  manualReason: string | null;
+  autoSuspendedUntil: string | null;
+  autoReason: string | null;
+  sourceModel: string | null;
+  sourceProvider: string | null;
+  resetTimeSource: string | null;
+  updatedAt: string | null;
+  updatedBy: string | null;
 }
 
 export interface ListOAuthResult {

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { OhMyOpenCodeFullConfig, TmuxConfig } from "@/lib/config-generators/oh-my-opencode-types";
 import { TMUX_LAYOUTS } from "@/lib/config-generators/oh-my-opencode-types";
 
@@ -20,12 +21,14 @@ export function TmuxSection({
   onTmuxLayoutChange,
   onTmuxNumberChange,
 }: TmuxSectionProps) {
+  const t = useTranslations("ohMyOpenCode");
+
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.02] overflow-hidden transition-all hover:border-white/15">
+    <div className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] overflow-hidden transition-colors hover:border-[var(--surface-border)]">
       <button
         type="button"
         onClick={onToggleExpand}
-        className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-medium text-white/60 hover:text-white/90 hover:bg-white/[0.04] transition-colors"
+        className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-muted)] transition-colors"
       >
         <svg
           width="10"
@@ -41,22 +44,22 @@ export function TmuxSection({
         >
           <polyline points="9 18 15 12 9 6" />
         </svg>
-        <span className="flex-1 text-left">Tmux</span>
+        <span className="flex-1 text-left">{t("tmux")}</span>
         {overrides.tmux?.enabled && (
-          <span className="px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400/80 text-[10px] font-mono">
-            enabled
+          <span className="px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600/80 text-[10px] font-mono">
+            {t("tmuxEnabled")}
           </span>
         )}
       </button>
       {isExpanded && (
         <div className="px-3 pb-3 space-y-2">
-          <div className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-white/5">
-            <span className="text-xs text-white/70 font-mono">Enabled</span>
+          <div className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-[var(--surface-muted)]">
+            <span className="text-xs text-[var(--text-secondary)] font-mono">{t("tmuxEnabledLabel")}</span>
             <button
               type="button"
               onClick={onTmuxEnabledToggle}
               className={`w-9 h-5 rounded-full transition-colors relative ${
-                overrides.tmux?.enabled ? "bg-emerald-500/60" : "bg-white/10"
+                overrides.tmux?.enabled ? "bg-emerald-500/100" : "bg-[var(--surface-hover)]"
               }`}
             >
               <span
@@ -69,11 +72,11 @@ export function TmuxSection({
           {overrides.tmux?.enabled && (
             <>
               <div className="space-y-1">
-                <span className="text-xs text-white/50">Layout</span>
+                <span className="text-xs text-[var(--text-muted)]">{t("tmuxLayout")}</span>
                 <select
                   value={overrides.tmux.layout ?? "main-vertical"}
                   onChange={(e) => onTmuxLayoutChange(e.target.value)}
-                  className="w-full px-2.5 py-1.5 text-xs bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-violet-400/40"
+                  className="w-full px-2.5 py-1.5 text-xs bg-[var(--surface-muted)] border border-[var(--surface-border)] rounded-lg text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]/20"
                 >
                   {TMUX_LAYOUTS.map((layout) => (
                     <option key={layout} value={layout}>
@@ -83,7 +86,7 @@ export function TmuxSection({
                 </select>
               </div>
               <div className="space-y-1">
-                <span className="text-xs text-white/50">Main Pane Size (20-80)</span>
+                <span className="text-xs text-[var(--text-muted)]">{t("mainPaneSize")}</span>
                 <input
                   type="number"
                   min={20}
@@ -95,11 +98,11 @@ export function TmuxSection({
                       onTmuxNumberChange("main_pane_size", parsed);
                     }
                   }}
-                  className="w-full px-2.5 py-1.5 text-xs bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-violet-400/40"
+                  className="w-full px-2.5 py-1.5 text-xs bg-[var(--surface-muted)] border border-[var(--surface-border)] rounded-lg text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]/20"
                 />
               </div>
               <div className="space-y-1">
-                <span className="text-xs text-white/50">Main Pane Min Width</span>
+                <span className="text-xs text-[var(--text-muted)]">{t("mainPaneMinWidth")}</span>
                 <input
                   type="number"
                   min={0}
@@ -110,11 +113,11 @@ export function TmuxSection({
                       onTmuxNumberChange("main_pane_min_width", parsed);
                     }
                   }}
-                  className="w-full px-2.5 py-1.5 text-xs bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-violet-400/40"
+                  className="w-full px-2.5 py-1.5 text-xs bg-[var(--surface-muted)] border border-[var(--surface-border)] rounded-lg text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]/20"
                 />
               </div>
               <div className="space-y-1">
-                <span className="text-xs text-white/50">Agent Pane Min Width</span>
+                <span className="text-xs text-[var(--text-muted)]">{t("agentPaneMinWidth")}</span>
                 <input
                   type="number"
                   min={0}
@@ -125,7 +128,7 @@ export function TmuxSection({
                       onTmuxNumberChange("agent_pane_min_width", parsed);
                     }
                   }}
-                  className="w-full px-2.5 py-1.5 text-xs bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-violet-400/40"
+                  className="w-full px-2.5 py-1.5 text-xs bg-[var(--surface-muted)] border border-[var(--surface-border)] rounded-lg text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]/20"
                 />
               </div>
             </>

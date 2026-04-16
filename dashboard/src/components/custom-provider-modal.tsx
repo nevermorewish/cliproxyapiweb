@@ -5,6 +5,7 @@ import { Modal, ModalHeader, ModalTitle, ModalContent, ModalFooter } from "@/com
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { API_ENDPOINTS } from "@/lib/api-endpoints";
+import { extractApiError } from "@/lib/utils";
 import { BasicFields } from "@/components/custom-providers/basic-fields";
 import { HeadersSection } from "@/components/custom-providers/headers-section";
 import { ModelDiscovery } from "@/components/custom-providers/model-discovery";
@@ -12,6 +13,7 @@ import { ModelMappings } from "@/components/custom-providers/model-mappings";
 import { ExcludedModels } from "@/components/custom-providers/excluded-models";
 import { GroupSelect } from "@/components/custom-providers/group-select";
 
+import { useTranslations } from "next-intl";
 interface ModelMapping {
   _id: number;
   upstreamName: string;
@@ -77,6 +79,7 @@ function isValidBaseUrl(value: string): boolean {
 export function CustomProviderModal({ isOpen, onClose, provider, onSuccess }: CustomProviderModalProps) {
   const { showToast } = useToast();
   const isEdit = !!provider;
+  const t = useTranslations("providers");
 
   const [name, setName] = useState("");
   const [providerId, setProviderId] = useState("");
@@ -163,11 +166,11 @@ export function CustomProviderModal({ isOpen, onClose, provider, onSuccess }: Cu
 
   const validate = () => {
     const newErrors = {
-      name: name.length === 0 ? "Name is required" : name.length > 100 ? "Max 100 characters" : "",
-      providerId: !/^[a-z0-9-]+$/.test(providerId) ? "Only lowercase letters, numbers, and hyphens" : "",
-      baseUrl: !isValidBaseUrl(baseUrl) ? "Must be a valid http:// or https:// URL" : "",
-      apiKey: !isEdit && apiKey.length === 0 ? "API key is required" : "",
-      models: models.filter(m => m.upstreamName && m.alias).length === 0 ? "At least one model mapping required" : ""
+      name: name.length === 0 ? t("validationNameRequired") : name.length > 100 ? t("validationNameMaxLength") : "",
+      providerId: !/^[a-z0-9-]+$/.test(providerId) ? t("validationProviderIdInvalid") : "",
+      baseUrl: !isValidBaseUrl(baseUrl) ? t("validationBaseUrlInvalid") : "",
+      apiKey: !isEdit && apiKey.length === 0 ? t("validationApiKeyRequired") : "",
+      models: models.filter(m => m.upstreamName && m.alias).length === 0 ? t("validationModelsRequired") : ""
     };
 
     setErrors(newErrors);
@@ -209,16 +212,21 @@ export function CustomProviderModal({ isOpen, onClose, provider, onSuccess }: Cu
       });
 
       if (response.ok) {
-        showToast(`Custom provider ${isEdit ? 'updated' : 'created'}`, "success");
+        showToast(isEdit ? t("toastProviderUpdated") : t("toastProviderCreated"), "success");
         onSuccess();
         onClose();
         resetForm();
       } else {
-        const error = await response.json();
-        showToast(error.error || "Failed to save provider", "error");
+        let data: unknown = null;
+        try {
+          data = await response.json();
+        } catch {
+          data = null;
+        }
+        showToast(extractApiError(data, t("toastSaveFailed")), "error");
       }
     } catch {
-      showToast("Network error", "error");
+      showToast(t("toastNetworkError"), "error");
     } finally {
       setSaving(false);
     }
@@ -270,7 +278,7 @@ export function CustomProviderModal({ isOpen, onClose, provider, onSuccess }: Cu
 
   const fetchModelsHandler = async () => {
     if (!isValidBaseUrl(baseUrl) || apiKey.length === 0) {
-      showToast("Please enter a valid Base URL (http/https) and API Key first", "error");
+      showToast(t("toastFetchModelsInvalid"), "error");
       return;
     }
 
@@ -296,13 +304,18 @@ export function CustomProviderModal({ isOpen, onClose, provider, onSuccess }: Cu
 
         setFetchedModels(fetchedList);
         setShowFetchedModels(true);
-        showToast(`Found ${fetchedList.length} models`, "success");
+        showToast(t("toastFetchModelsSuccess", { count: fetchedList.length }), "success");
       } else {
-        const error = await response.json();
-        showToast(error.error || "Failed to fetch models", "error");
+        let data: unknown = null;
+        try {
+          data = await response.json();
+        } catch {
+          data = null;
+        }
+        showToast(extractApiError(data, t("toastFetchModelsFailed")), "error");
       }
     } catch {
-      showToast("Network error", "error");
+      showToast(t("toastNetworkError"), "error");
     } finally {
       setFetchingModels(false);
     }
@@ -338,7 +351,7 @@ export function CustomProviderModal({ isOpen, onClose, provider, onSuccess }: Cu
         const existing = prev.filter(m => m.upstreamName || m.alias);
         return [...existing, ...newModels];
       });
-      showToast(`Added ${newModels.length} model${newModels.length !== 1 ? 's' : ''}`, "success");
+      showToast(t("toastModelsAdded", { count: newModels.length }), "success");
     }
 
     setShowFetchedModels(false);
@@ -348,7 +361,7 @@ export function CustomProviderModal({ isOpen, onClose, provider, onSuccess }: Cu
   return (
     <Modal isOpen={isOpen} onClose={onClose} className="max-w-3xl">
       <ModalHeader>
-        <ModalTitle>{isEdit ? 'Edit' : 'Add'} Custom Provider</ModalTitle>
+        <ModalTitle>{isEdit ? t("customProviderEditTitle") : t("customProviderAddTitle")}</ModalTitle>
       </ModalHeader>
 
       <ModalContent>
@@ -421,10 +434,10 @@ export function CustomProviderModal({ isOpen, onClose, provider, onSuccess }: Cu
 
       <ModalFooter>
         <Button variant="ghost" onClick={onClose} disabled={saving}>
-          Cancel
+          {t("customProviderCancelButton")}
         </Button>
         <Button onClick={handleSubmit} disabled={saving}>
-          {saving ? (isEdit ? "Updating..." : "Creating...") : (isEdit ? "Update Provider" : "Create Provider")}
+          {saving ? (isEdit ? t("customProviderUpdatingButton") : t("customProviderCreatingButton")) : (isEdit ? t("customProviderUpdateButton") : t("customProviderCreateButton"))}
         </Button>
       </ModalFooter>
     </Modal>

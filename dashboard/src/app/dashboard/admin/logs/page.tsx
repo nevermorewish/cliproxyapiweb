@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from 'next-intl';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -26,12 +27,12 @@ interface LogStats {
 }
 
 const LEVEL_COLORS: Record<string, string> = {
-  error: "text-red-400 bg-red-500/10 border-red-500/30",
-  fatal: "text-red-400 bg-red-500/10 border-red-500/30",
-  warn: "text-yellow-400 bg-yellow-500/10 border-yellow-500/30",
-  info: "text-blue-400 bg-blue-500/10 border-blue-500/30",
-  debug: "text-gray-400 bg-gray-500/10 border-gray-500/30",
-  trace: "text-gray-500 bg-gray-500/10 border-gray-500/30",
+  error: "text-red-600 bg-red-500/100/10 border-red-500/20",
+  fatal: "text-red-600 bg-red-500/100/10 border-red-500/20",
+  warn: "text-yellow-700 bg-yellow-500/100/10 border-yellow-500/20",
+  info: "text-blue-600 bg-blue-500/100/10 border-blue-500/20",
+  debug: "text-[var(--text-muted)] bg-[var(--surface-muted)] border-[var(--surface-border)]",
+  trace: "text-[var(--text-muted)] bg-[var(--surface-muted)] border-[var(--surface-border)]",
 };
 
 const LEVEL_FILTERS = ["all", "error", "warn", "info", "debug"] as const;
@@ -40,27 +41,27 @@ type LevelFilter = (typeof LEVEL_FILTERS)[number];
 const LOGS_PER_PAGE = 50;
 const EMPTY_LOGS: LogEntry[] = [];
 
-function formatRelativeTime(timestamp: number): string {
+function formatRelativeTime(timestamp: number, t: ReturnType<typeof useTranslations>): string {
   const now = Date.now();
   const diff = now - timestamp;
 
   if (diff < 60000) {
     const seconds = Math.floor(diff / 1000);
-    return seconds <= 1 ? "just now" : `${seconds}s ago`;
+    return seconds <= 1 ? t('justNow') : t('secondsAgo', { count: seconds });
   }
 
   if (diff < 3600000) {
     const minutes = Math.floor(diff / 60000);
-    return minutes === 1 ? "1 minute ago" : `${minutes} minutes ago`;
+    return minutes === 1 ? t('minuteAgo') : t('minutesAgo', { count: minutes });
   }
 
   if (diff < 86400000) {
     const hours = Math.floor(diff / 3600000);
-    return hours === 1 ? "1 hour ago" : `${hours} hours ago`;
+    return hours === 1 ? t('hourAgo') : t('hoursAgo', { count: hours });
   }
 
   const days = Math.floor(diff / 86400000);
-  return days === 1 ? "1 day ago" : `${days} days ago`;
+  return days === 1 ? t('dayAgo') : t('daysAgo', { count: days });
 }
 
 function formatTimestamp(timestamp: number): string {
@@ -82,6 +83,8 @@ export default function AdminLogsPage() {
 
   const { showToast } = useToast();
   const router = useRouter();
+  const t = useTranslations('logs');
+  const tc = useTranslations('common');
 
   const fetchLogs = useCallback(async (signal?: AbortSignal) => {
     try {
@@ -99,13 +102,13 @@ export default function AdminLogsPage() {
       }
 
       if (res.status === 403) {
-        showToast("Admin access required", "error");
+        showToast(t('toastAdminRequired'), "error");
         router.push("/dashboard");
         return;
       }
 
       if (!res.ok) {
-        showToast("Failed to load logs", "error");
+        showToast(t('toastLoadFailed'), "error");
         setLoading(false);
         return;
       }
@@ -119,20 +122,16 @@ export default function AdminLogsPage() {
       setLoading(false);
     } catch {
       if (signal?.aborted) return;
-      showToast("Network error", "error");
+      showToast(t('toastNetworkError'), "error");
       setLoading(false);
     }
-  }, [levelFilter, router, showToast]);
+  }, [levelFilter, router, showToast, t]);
 
-  // Reset page when filter changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [levelFilter]);
-
-  const totalPages = Math.ceil(logs.length / LOGS_PER_PAGE);
+  const totalPages = Math.max(1, Math.ceil(logs.length / LOGS_PER_PAGE));
+  const activePage = Math.min(currentPage, totalPages);
   const pagedLogs = logs.slice(
-    (currentPage - 1) * LOGS_PER_PAGE,
-    currentPage * LOGS_PER_PAGE
+    (activePage - 1) * LOGS_PER_PAGE,
+    activePage * LOGS_PER_PAGE
   );
 
   useEffect(() => {
@@ -179,18 +178,18 @@ export default function AdminLogsPage() {
       const res = await fetch(API_ENDPOINTS.ADMIN.LOGS, { method: "DELETE" });
 
       if (!res.ok) {
-        showToast("Failed to clear logs", "error");
+        showToast(t('toastClearFailed'), "error");
         setClearing(false);
         return;
       }
 
-      showToast("Logs cleared", "success");
+      showToast(t('toastCleared'), "success");
       setLogs([]);
       setTotal(0);
       setStats(null);
       setClearing(false);
     } catch {
-      showToast("Network error", "error");
+      showToast(t('toastNetworkError'), "error");
       setClearing(false);
     }
   };
@@ -212,31 +211,34 @@ export default function AdminLogsPage() {
     }
     return Object.keys(details).length > 0
       ? JSON.stringify(details, null, 2)
-      : "No additional details";
+      : t('noAdditionalDetails');
   };
 
   return (
     <div className="space-y-4">
-      <Breadcrumbs items={[{ label: "Dashboard", href: "/dashboard" }, { label: "Admin" }, { label: "Application Logs" }]} />
-      <section className="rounded-lg border border-slate-700/70 bg-slate-900/40 p-4">
+      <Breadcrumbs items={[{ label: tc('dashboard'), href: "/dashboard" }, { label: tc('admin') }, { label: t('breadcrumbLabel') }]} />
+      <section className="rounded-lg border border-[var(--surface-border)] bg-[var(--surface-base)] p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight text-slate-100">Application Logs</h1>
-            <p className="mt-1 text-xs text-slate-400">Dashboard application event log.</p>
+            <h1 className="text-xl font-semibold tracking-tight text-[var(--text-primary)]">{t('applicationLogsTitle')}</h1>
+            <p className="mt-1 text-xs text-[var(--text-muted)]">{t('eventLogDescription')}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-2">
-              <label htmlFor="level-filter" className="text-xs text-slate-400">
-                Level:
+              <label htmlFor="level-filter" className="text-xs text-[var(--text-muted)]">
+                {t('levelLabel')}
               </label>
               <select
                 id="level-filter"
                 value={levelFilter}
-                onChange={(e) => setLevelFilter(e.target.value as LevelFilter)}
-                className="rounded-sm border border-slate-700/70 bg-slate-900/50 px-3 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-blue-400/50 transition-colors"
+                onChange={(e) => {
+                  setLevelFilter(e.target.value as LevelFilter);
+                  setCurrentPage(1);
+                }}
+                className="rounded-sm border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-1.5 text-sm text-[var(--text-primary)] focus:outline-none focus:border-blue-400/50 transition-colors"
               >
                 {LEVEL_FILTERS.map((level) => (
-                  <option key={level} value={level} className="bg-slate-900">
+                  <option key={level} value={level} className="bg-[var(--surface-base)]">
                     {level.charAt(0).toUpperCase() + level.slice(1)}
                   </option>
                 ))}
@@ -248,86 +250,86 @@ export default function AdminLogsPage() {
                 type="checkbox"
                 checked={autoRefresh}
                 onChange={(e) => setAutoRefresh(e.target.checked)}
-                className="size-4 rounded border-slate-600/70 bg-slate-900/40 text-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0"
+                className="size-4 rounded border-[var(--surface-border)]/70 bg-[var(--surface-base)] text-[var(--text-primary)] focus:ring-2 focus:ring-black/20 focus:ring-offset-0"
               />
-              <span className="text-xs text-slate-400">Auto-refresh (5s)</span>
+              <span className="text-xs text-[var(--text-muted)]">{t('autoRefresh')}</span>
             </label>
 
             <Button onClick={() => void fetchLogs()} variant="secondary" className="px-2.5 py-1 text-xs">
-              Refresh
+              {t('refreshButton')}
             </Button>
 
             <Button onClick={confirmClear} variant="danger" disabled={clearing} className="px-2.5 py-1 text-xs">
-              {clearing ? "Clearing..." : "Clear Logs"}
+              {clearing ? t('clearing') : t('clearLogsButton')}
             </Button>
           </div>
         </div>
       </section>
 
       {stats && (
-        <div className="flex flex-wrap gap-4 text-xs text-slate-400">
+        <div className="flex flex-wrap gap-4 text-xs text-[var(--text-muted)]">
           <span className="flex items-center gap-1.5">
-            <span className={`size-2 rounded-full ${stats.persistent ? "bg-green-500" : "bg-yellow-500"}`} />
-            Persistent storage {stats.persistent ? "enabled" : "disabled"}
+            <span className={`size-2 rounded-full ${stats.persistent ? "bg-green-500/100" : "bg-yellow-500/100"}`} />
+            {stats.persistent ? t('persistentStorageEnabled') : t('persistentStorageDisabled')}
           </span>
-          <span>Memory: {stats.memoryCount} logs</span>
-          <span>File: {stats.fileCount} logs ({stats.fileSizeKB} KB)</span>
-          {stats.rotatedFiles > 0 && <span>Rotated files: {stats.rotatedFiles}</span>}
+          <span>{t('memoryLogs', { count: stats.memoryCount })}</span>
+          <span>{t('fileLogs', { count: stats.fileCount, sizeKB: stats.fileSizeKB })}</span>
+          {stats.rotatedFiles > 0 && <span>{t('rotatedFiles', { count: stats.rotatedFiles })}</span>}
         </div>
       )}
 
-      <section className="overflow-hidden rounded-lg border border-slate-700/70 bg-slate-900/40">
-        <div className="flex items-center justify-between border-b border-slate-700/70 bg-slate-900/50 px-3 py-2">
-          <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">Log Entries</span>
-          <span className="text-xs text-slate-400">
+      <section className="overflow-hidden rounded-lg border border-[var(--surface-border)] bg-[var(--surface-base)]">
+        <div className="flex items-center justify-between border-b border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-2">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">{t('logEntriesHeader')}</span>
+          <span className="text-xs text-[var(--text-muted)]">
             {logs.length > 0
-              ? `Showing ${(currentPage - 1) * LOGS_PER_PAGE + 1}–${Math.min(currentPage * LOGS_PER_PAGE, logs.length)} of ${logs.length} logs`
-              : `${total} logs`}
+              ? t('showingLogs', { start: (activePage - 1) * LOGS_PER_PAGE + 1, end: Math.min(activePage * LOGS_PER_PAGE, logs.length), total: logs.length })
+              : t('totalLogsCount', { total: total })}
           </span>
         </div>
 
         {loading ? (
-          <div className="p-6 text-center text-sm text-slate-400">Loading...</div>
+          <div className="p-6 text-center text-sm text-[var(--text-muted)]">{t('loadingText')}</div>
         ) : logs.length === 0 ? (
           <div className="p-4">
-            <div className="rounded-sm border border-slate-700/70 bg-slate-900/30 p-4 text-sm text-slate-400">
-              No logs found. Logs will appear here when application events occur.
+            <div className="rounded-sm border border-[var(--surface-border)] bg-[var(--surface-base)] p-4 text-sm text-[var(--text-muted)]">
+              {t('emptyState')}
             </div>
           </div>
         ) : (
           <div className="max-h-[clamp(300px,60vh,700px)] overflow-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="sticky top-0 z-10 border-b border-slate-700/70 bg-slate-900/95 backdrop-blur-sm">
-                  <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400 w-36">
+                <tr className="sticky top-0 z-10 border-b border-[var(--surface-border)] bg-[var(--surface-base)]/95">
+                  <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)] w-36">
                     Time
                   </th>
-                  <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400 w-20">
+                  <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)] w-20">
                     Level
                   </th>
-                  <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+                  <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">
                     Message
                   </th>
-                  <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400 w-20">
+                  <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)] w-20">
                     Details
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {pagedLogs.map((log, index) => {
-                  const globalIndex = (currentPage - 1) * LOGS_PER_PAGE + index;
+                  const globalIndex = (activePage - 1) * LOGS_PER_PAGE + index;
                   return (
                   <React.Fragment key={`log-${log.time}-${globalIndex}`}>
                     <tr
-                      className="border-b border-slate-700/60 last:border-b-0 hover:bg-slate-800/30 transition-colors cursor-pointer"
+                      className="border-b border-[var(--surface-border)] last:border-b-0 hover:bg-[var(--surface-hover)] transition-colors cursor-pointer"
                       onClick={() => toggleRowExpansion(globalIndex)}
                     >
                       <td className="px-3 py-2">
                         <div className="flex flex-col">
-                          <span className="text-xs text-slate-200">
-                            {formatRelativeTime(log.time)}
+                          <span className="text-xs text-[var(--text-primary)]">
+                            {formatRelativeTime(log.time, t)}
                           </span>
-                          <span className="text-[10px] text-slate-400">
+                          <span className="text-[10px] text-[var(--text-muted)]">
                             {formatTimestamp(log.time)}
                           </span>
                         </div>
@@ -339,15 +341,15 @@ export default function AdminLogsPage() {
                           {log.levelLabel.toUpperCase()}
                         </span>
                       </td>
-                      <td className="px-3 py-2 text-xs text-slate-200 font-mono break-all max-w-md">
+                      <td className="px-3 py-2 text-xs text-[var(--text-primary)] font-mono break-all max-w-md">
                         {log.msg}
                       </td>
                       <td className="px-3 py-2">
                         <button
                           type="button"
-                          className="text-blue-400 hover:text-blue-300 text-xs underline"
+                          className="text-blue-600 hover:text-blue-800 text-xs underline"
                         >
-                          {expandedRow === globalIndex ? "Hide" : "Show"}
+                          {expandedRow === globalIndex ? t('hide') : t('show')}
                         </button>
                       </td>
                     </tr>
@@ -355,9 +357,9 @@ export default function AdminLogsPage() {
                       <tr>
                         <td
                           colSpan={4}
-                          className="px-3 py-3 bg-slate-900/30 border-b border-slate-700/60"
+                          className="px-3 py-3 bg-[var(--surface-base)] border-b border-[var(--surface-border)]"
                         >
-                          <pre className="text-xs text-slate-400 font-mono whitespace-pre-wrap overflow-auto max-h-64">
+                          <pre className="text-xs text-[var(--text-muted)] font-mono whitespace-pre-wrap overflow-auto max-h-64">
                             {renderLogDetails(log)}
                           </pre>
                         </td>
@@ -372,25 +374,25 @@ export default function AdminLogsPage() {
         )}
 
         {totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-slate-700/70 px-3 py-2">
+          <div className="flex items-center justify-between border-t border-[var(--surface-border)] px-3 py-2">
             <Button
               variant="ghost"
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
+              disabled={activePage === 1}
               className="px-2.5 py-1 text-xs"
             >
-              Previous
+              {t('previous')}
             </Button>
-            <span className="text-xs text-slate-400">
-              Page {currentPage} of {totalPages}
+            <span className="text-xs text-[var(--text-muted)]">
+              {t('pageOf', { page: activePage, total: totalPages })}
             </span>
             <Button
               variant="ghost"
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
+              disabled={activePage === totalPages}
               className="px-2.5 py-1 text-xs"
             >
-              Next
+              {t('next')}
             </Button>
           </div>
         )}
@@ -400,10 +402,10 @@ export default function AdminLogsPage() {
         isOpen={showConfirm}
         onClose={() => setShowConfirm(false)}
         onConfirm={handleClearLogs}
-        title="Clear All Logs"
-        message="Are you sure you want to clear all logs?"
-        confirmLabel="Clear"
-        cancelLabel="Cancel"
+        title={t('clearAllLogsTitle')}
+        message={t('clearAllLogsMessage')}
+        confirmLabel={t('clearButton')}
+        cancelLabel={tc('cancel')}
         variant="danger"
       />
     </div>

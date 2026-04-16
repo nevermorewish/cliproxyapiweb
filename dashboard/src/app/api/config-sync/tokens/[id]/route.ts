@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { verifySession } from "@/lib/auth/session";
 import { validateOrigin } from "@/lib/auth/origin";
 import { prisma } from "@/lib/db";
@@ -89,13 +89,12 @@ export async function DELETE(
       return Errors.forbidden();
     }
 
-    await prisma.syncToken.update({
+    await prisma.syncToken.delete({
       where: { id },
-      data: { revokedAt: new Date() },
     });
 
     return apiSuccess({});
   } catch (error) {
-    return Errors.internal("Failed to revoke sync token", error);
+    return Errors.internal("Failed to delete sync token", error);
   }
 }

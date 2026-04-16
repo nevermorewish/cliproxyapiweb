@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
-import { LocaleProvider } from "@/lib/i18n-client";
-import { LOCALE_COOKIE, DEFAULT_LOCALE } from "@/lib/i18n";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages } from "next-intl/server";
+import { getThemeBootstrapScript } from "@/lib/theme-script";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -19,17 +19,26 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const cookieStore = await cookies();
-  const locale = cookieStore.get(LOCALE_COOKIE)?.value || DEFAULT_LOCALE;
+  const locale = await getLocale();
+  const messages = await getMessages();
 
   return (
-    <html lang={locale === "zh" ? "zh-CN" : "en"}>
+    <html lang={locale} suppressHydrationWarning>
+      <head>
+        <script>{getThemeBootstrapScript()}</script>
+      </head>
       <body
         className={`${GeistSans.variable} ${GeistMono.variable} antialiased`}
       >
-        <LocaleProvider initialLocale={locale}>
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-blue-600 focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-white focus:outline-none"
+        >
+          Skip to main content
+        </a>
+        <NextIntlClientProvider messages={messages}>
           {children}
-        </LocaleProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 
 interface TooltipProps {
   children: ReactNode;
@@ -12,30 +12,20 @@ interface TooltipProps {
 
 export function Tooltip({
   children,
-  content,
+  content: _content,
   side = "top",
   className,
 }: TooltipProps) {
-  const [visible, setVisible] = useState(false);
-
   return (
-    <span
-      className="relative inline-flex"
-      onMouseEnter={() => setVisible(true)}
-      onMouseLeave={() => setVisible(false)}
-      onFocus={() => setVisible(true)}
-      onBlur={() => setVisible(false)}
-      onTouchStart={() => setVisible((v) => !v)}
-    >
+    <span className="relative inline-flex group/tip">
       {children}
       <span
         role="tooltip"
         className={cn(
           "pointer-events-none absolute z-50 w-52",
-          "bg-slate-900/95 backdrop-blur-sm border border-slate-600/40 text-slate-300 text-[10px] leading-[14px] rounded-md px-2.5 py-1.5 shadow-xl",
-          "transition-opacity duration-150",
+          "bg-[var(--surface-base)] text-[var(--text-secondary)] text-[10px] leading-[14px] rounded-md px-2.5 py-1.5 shadow-[var(--shadow-elevated)]",
+          "transition-opacity duration-150 opacity-0 group-hover/tip:opacity-100 group-focus-within/tip:opacity-100",
           "whitespace-normal break-words",
-          visible ? "opacity-100" : "opacity-0",
           side === "top" && "bottom-full left-1/2 -translate-x-1/2 mb-1.5",
           side === "bottom" && "top-full left-1/2 -translate-x-1/2 mt-1.5",
           side === "left" && "right-full top-1/2 -translate-y-1/2 mr-1.5",
@@ -43,19 +33,19 @@ export function Tooltip({
           className
         )}
       >
-        {content}
+        {_content}
         <span
           className={cn(
             "pointer-events-none absolute",
             "border-4 border-transparent",
             side === "top" &&
-              "top-full left-1/2 -translate-x-1/2 border-t-slate-900/95",
+              "top-full left-1/2 -translate-x-1/2 border-t-[var(--surface-base)]",
             side === "bottom" &&
-              "bottom-full left-1/2 -translate-x-1/2 border-b-slate-900/95",
+              "bottom-full left-1/2 -translate-x-1/2 border-b-[var(--surface-base)]",
             side === "left" &&
-              "left-full top-1/2 -translate-y-1/2 border-l-slate-900/95",
+              "left-full top-1/2 -translate-y-1/2 border-l-[var(--surface-base)]",
             side === "right" &&
-              "right-full top-1/2 -translate-y-1/2 border-r-slate-900/95"
+              "right-full top-1/2 -translate-y-1/2 border-r-[var(--surface-base)]"
           )}
         />
       </span>
@@ -70,13 +60,13 @@ interface HelpTooltipProps {
 export function HelpTooltip({ content }: HelpTooltipProps) {
   return (
     <Tooltip content={content} side="bottom">
-      <span
-        className="inline-flex items-center justify-center size-3.5 rounded-full bg-slate-700/40 text-slate-500 text-[8px] cursor-help hover:bg-slate-600/50 hover:text-slate-400 transition-colors duration-150 select-none ml-1 align-middle"
-        tabIndex={0}
+      <button
+        type="button"
+        className="inline-flex items-center justify-center size-5 rounded-full bg-[var(--surface-muted)] text-[var(--text-muted)] text-[9px] cursor-help hover:bg-[var(--surface-hover)] hover:text-[var(--text-secondary)] transition-colors duration-150 select-none ml-1 align-middle"
         aria-label={content}
       >
         ?
-      </span>
+      </button>
     </Tooltip>
   );
 }

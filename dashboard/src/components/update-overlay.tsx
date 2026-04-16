@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { API_ENDPOINTS } from "@/lib/api-endpoints";
 
@@ -10,12 +11,7 @@ interface UpdateOverlayProps {
   variant: "dashboard" | "proxy";
 }
 
-const STEPS = [
-  { label: "Pulling new version", duration: 3000 },
-  { label: "Installing update", duration: 5000 },
-  { label: "Restarting container", duration: 4000 },
-  { label: "Waiting for server", duration: 0 },
-] as const;
+const STEP_DURATIONS = [3000, 5000, 4000, 0] as const;
 
 export function UpdateOverlay({
   isVisible,
@@ -27,7 +23,14 @@ export function UpdateOverlay({
   const [dots, setDots] = useState("");
 
   const isDashboard = variant === "dashboard";
-  const label = isDashboard ? "Dashboard" : "CLIProxyAPI";
+  const t = useTranslations('updateOverlay');
+  const stepLabels = [
+    t('stepPulling'),
+    t('stepInstalling'),
+    t('stepRestarting'),
+    t('stepWaiting'),
+  ];
+  const label = isDashboard ? t('labelDashboard') : t('labelProxy');
 
   // Reset state when overlay becomes visible
   useEffect(() => {
@@ -41,14 +44,14 @@ export function UpdateOverlay({
   // Progress through steps with timers
   useEffect(() => {
     if (!isVisible) return;
-    if (currentStep >= STEPS.length - 1) return;
+    if (currentStep >= STEP_DURATIONS.length - 1) return;
 
-    const step = STEPS[currentStep];
-    if (step.duration === 0) return;
+    const duration = STEP_DURATIONS[currentStep];
+    if (duration === 0) return;
 
     const timer = setTimeout(() => {
-      setCurrentStep((prev) => Math.min(prev + 1, STEPS.length - 1));
-    }, step.duration);
+      setCurrentStep((prev) => Math.min(prev + 1, STEP_DURATIONS.length - 1));
+    }, duration);
 
     return () => clearTimeout(timer);
   }, [isVisible, currentStep]);
@@ -66,7 +69,7 @@ export function UpdateOverlay({
 
   // Poll server availability once we reach the last step
   useEffect(() => {
-    if (!isVisible || currentStep < STEPS.length - 1) return;
+    if (!isVisible || currentStep < STEP_DURATIONS.length - 1) return;
 
     let cancelled = false;
     let attempts = 0;
@@ -118,12 +121,12 @@ export function UpdateOverlay({
 
   const progress = serverReady
     ? 100
-    : Math.min(((currentStep + 1) / STEPS.length) * 90, 90);
+    : Math.min(((currentStep + 1) / STEP_DURATIONS.length) * 90, 90);
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center" role="alertdialog" aria-modal="true" aria-label={serverReady ? t('ariaComplete') : t('ariaUpdating', { label })}>
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm animate-modal-overlay" />
+      <div className="absolute inset-0 bg-black/80 animate-modal-overlay" />
 
       {/* Content */}
       <div className="relative z-10 flex flex-col items-center gap-8 px-6 animate-modal-card">
@@ -148,7 +151,7 @@ export function UpdateOverlay({
           <div
             className={cn(
               "absolute h-16 w-16 rounded-full animate-pulse",
-              isDashboard ? "bg-purple-500/10" : "bg-blue-500/10"
+              isDashboard ? "bg-purple-500/10" : "bg-blue-500/100/10"
             )}
           />
           {/* Center icon */}
@@ -156,7 +159,7 @@ export function UpdateOverlay({
             {serverReady ? (
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className="h-8 w-8 text-green-400"
+                className="h-8 w-8 text-green-500"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -197,19 +200,19 @@ export function UpdateOverlay({
         {/* Title */}
         <div className="text-center">
           <h2 className="text-xl font-semibold text-white mb-1">
-            {serverReady ? "Update Complete!" : `Updating ${label}`}
+            {serverReady ? t('titleUpdateComplete') : t('titleUpdating', { label })}
           </h2>
-          <p className="text-sm text-white/50 font-mono">{targetVersion}</p>
+          <p className="text-sm text-white/60 font-mono">{targetVersion}</p>
         </div>
 
         {/* Progress bar */}
         <div className="w-72">
-          <div className="h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
+          <div className="h-1.5 w-full rounded-full bg-white/20 overflow-hidden">
             <div
               className={cn(
-                "h-full rounded-full transition-all duration-1000 ease-out",
+                "h-full rounded-full transition-[width] duration-1000 ease-out",
                 serverReady
-                  ? "bg-green-400"
+                  ? "bg-green-500/100"
                   : isDashboard
                     ? "bg-gradient-to-r from-purple-500 to-purple-400"
                     : "bg-gradient-to-r from-blue-500 to-blue-400"
@@ -221,18 +224,18 @@ export function UpdateOverlay({
 
         {/* Steps */}
         <div className="flex flex-col gap-2 w-72">
-          {STEPS.map((step, idx) => {
+          {STEP_DURATIONS.map((_, idx) => {
             const isActive = idx === currentStep && !serverReady;
             const isComplete = idx < currentStep || serverReady;
 
             return (
-              <div key={step.label} className="flex items-center gap-3">
+              <div key={idx} className="flex items-center gap-3">
                 {/* Step indicator */}
                 <div className="flex-shrink-0 w-5 h-5 flex items-center justify-center">
                   {isComplete ? (
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
-                      className="h-4 w-4 text-green-400"
+                      className="h-4 w-4 text-green-500"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -262,12 +265,12 @@ export function UpdateOverlay({
                 <span
                   className={cn(
                     "text-sm",
-                    isComplete && "text-white/60",
+                    isComplete && "text-white/50",
                     isActive && "text-white font-medium",
                     !isComplete && !isActive && "text-white/30"
                   )}
                 >
-                  {step.label}
+                  {stepLabels[idx]}
                   {isActive ? dots : ""}
                 </span>
               </div>
@@ -276,8 +279,8 @@ export function UpdateOverlay({
         </div>
 
         {/* Footer hint */}
-        <p className="text-xs text-white/30 text-center">
-          {serverReady ? "Reloading page..." : "Please don't close this page"}
+        <p className="text-xs text-white/40 text-center">
+          {serverReady ? t('footerReloading') : t('footerDontClose')}
         </p>
       </div>
     </div>

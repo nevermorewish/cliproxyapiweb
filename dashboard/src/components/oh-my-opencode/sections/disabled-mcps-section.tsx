@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 interface DisabledMcpsSectionProps {
   isExpanded: boolean;
   onToggleExpand: () => void;
@@ -19,12 +21,14 @@ export function DisabledMcpsSection({
   onMcpAdd,
   onMcpRemove,
 }: DisabledMcpsSectionProps) {
+  const t = useTranslations("ohMyOpenCode");
+
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.02] overflow-hidden transition-all hover:border-white/15">
+    <div className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] overflow-hidden transition-colors hover:border-[var(--surface-border)]">
       <button
         type="button"
         onClick={onToggleExpand}
-        className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-medium text-white/60 hover:text-white/90 hover:bg-white/[0.04] transition-colors"
+        className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-muted)] transition-colors"
       >
         <svg
           width="10"
@@ -40,8 +44,8 @@ export function DisabledMcpsSection({
         >
           <polyline points="9 18 15 12 9 6" />
         </svg>
-        <span className="flex-1 text-left">Disabled MCPs</span>
-        <span className="px-1.5 py-0.5 rounded-md bg-white/5 text-white/50 text-[10px] font-mono">
+        <span className="flex-1 text-left">{t("disabledMcps")}</span>
+        <span className="px-1.5 py-0.5 rounded-md bg-[var(--surface-muted)] text-[var(--text-muted)] text-[10px] font-mono">
           {disabledMcps.length}
         </span>
       </button>
@@ -50,7 +54,7 @@ export function DisabledMcpsSection({
           <div className="flex gap-2">
             <input
               type="text"
-              placeholder="MCP name"
+              placeholder={t("mcpNamePlaceholder")}
               value={mcpInput}
               onChange={(e) => onMcpInputChange(e.target.value)}
               onKeyDown={(e) => {
@@ -59,27 +63,27 @@ export function DisabledMcpsSection({
                   onMcpAdd();
                 }
               }}
-              className="flex-1 px-2.5 py-1.5 text-xs bg-white/5 border border-white/10 rounded-lg text-white placeholder:text-white/30 focus:outline-none focus:border-violet-400/40"
+              className="flex-1 px-2.5 py-1.5 text-xs bg-[var(--surface-muted)] border border-[var(--surface-border)] rounded-lg text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)]/20"
             />
             <button
               type="button"
               onClick={onMcpAdd}
-              className="px-3 py-1.5 text-xs bg-violet-500/20 text-violet-300 rounded-lg hover:bg-violet-500/30"
+              className="px-3 py-1.5 text-xs bg-[var(--surface-muted)] text-[var(--text-primary)] rounded-lg hover:bg-[var(--surface-hover)]"
             >
-              Add
+              {t("addButton")}
             </button>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {disabledMcps.map((mcp) => (
               <div
                 key={mcp}
-                className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs bg-red-500/10 border border-red-400/20 text-red-300"
+                className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs bg-red-500/10 border border-red-500/20 text-red-600"
               >
                 <span className="font-mono">{mcp}</span>
                 <button
                   type="button"
                   onClick={() => onMcpRemove(mcp)}
-                  className="text-red-400 hover:text-red-200"
+                  className="text-red-600 hover:text-red-800"
                 >
                   &times;
                 </button>

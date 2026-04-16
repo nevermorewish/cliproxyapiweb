@@ -10,6 +10,7 @@ import { GroupList } from "@/components/providers/group-list";
 import { UngroupedList } from "@/components/providers/ungrouped-list";
 import { extractApiError } from "@/lib/utils";
 import { API_ENDPOINTS } from "@/lib/api-endpoints";
+import { useTranslations } from "next-intl";
 
 type ShowToast = ReturnType<typeof useToast>["showToast"];
 
@@ -67,12 +68,14 @@ export function CustomProviderSection({ showToast, onProviderCountChange }: Cust
     groupId: null,
   });
 
+  const t = useTranslations("providers");
+
   const loadProviderData = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch(API_ENDPOINTS.PROVIDER_GROUPS.BASE);
       if (!res.ok) {
-        showToast("Failed to load custom providers", "error");
+        showToast(t("toastLoadCustomFailed"), "error");
         setLoading(false);
         return;
       }
@@ -93,7 +96,7 @@ export function CustomProviderSection({ showToast, onProviderCountChange }: Cust
       setLoading(false);
     } catch {
       setLoading(false);
-      showToast("Network error", "error");
+      showToast(t("toastNetworkError"), "error");
     }
   }, [onProviderCountChange, showToast]);
 
@@ -119,13 +122,13 @@ export function CustomProviderSection({ showToast, onProviderCountChange }: Cust
       });
       if (!res.ok) {
         const data = await res.json();
-        showToast(extractApiError(data, "Failed to delete custom provider"), "error");
+        showToast(extractApiError(data, t("toastCustomDeleteFailed")), "error");
         return;
       }
-      showToast("Custom provider deleted", "success");
+      showToast(t("toastCustomDeleted"), "success");
       void loadProviderData();
     } catch {
-      showToast("Network error", "error");
+      showToast(t("toastNetworkError"), "error");
     }
   };
 
@@ -166,13 +169,13 @@ export function CustomProviderSection({ showToast, onProviderCountChange }: Cust
 
       if (!res.ok) {
         const data = await res.json();
-        showToast(extractApiError(data, "Failed to update group"), "error");
+        showToast(extractApiError(data, t("toastGroupUpdateFailed")), "error");
         return;
       }
 
       void loadProviderData();
     } catch {
-      showToast("Network error", "error");
+      showToast(t("toastNetworkError"), "error");
     }
   };
 
@@ -187,15 +190,15 @@ export function CustomProviderSection({ showToast, onProviderCountChange }: Cust
 
       if (!res.ok) {
         const data = await res.json();
-        showToast(extractApiError(data, "Failed to delete group"), "error");
+        showToast(extractApiError(data, t("toastGroupDeleteFailed")), "error");
         return;
       }
 
-      showToast("Group deleted", "success");
+      showToast(t("toastGroupDeleted"), "success");
       setDeleteGroupDialog({ isOpen: false, groupId: null });
       void loadProviderData();
     } catch {
-      showToast("Network error", "error");
+      showToast(t("toastNetworkError"), "error");
     }
   };
 
@@ -215,11 +218,11 @@ export function CustomProviderSection({ showToast, onProviderCountChange }: Cust
       });
 
       if (!res.ok) {
-        showToast("Failed to reorder groups", "error");
+        showToast(t("toastGroupReorderFailed"), "error");
         void loadProviderData();
       }
     } catch {
-      showToast("Network error", "error");
+      showToast(t("toastNetworkError"), "error");
       void loadProviderData();
     }
   };
@@ -240,11 +243,11 @@ export function CustomProviderSection({ showToast, onProviderCountChange }: Cust
       });
 
       if (!res.ok) {
-        showToast("Failed to reorder groups", "error");
+        showToast(t("toastGroupReorderFailed"), "error");
         void loadProviderData();
       }
     } catch {
-      showToast("Network error", "error");
+      showToast(t("toastNetworkError"), "error");
       void loadProviderData();
     }
   };
@@ -274,11 +277,11 @@ export function CustomProviderSection({ showToast, onProviderCountChange }: Cust
       });
 
       if (!res.ok) {
-        showToast("Failed to reorder providers", "error");
+        showToast(t("toastProviderReorderFailed"), "error");
         void loadProviderData();
       }
     } catch {
-      showToast("Network error", "error");
+      showToast(t("toastNetworkError"), "error");
       void loadProviderData();
     }
   };
@@ -338,15 +341,15 @@ export function CustomProviderSection({ showToast, onProviderCountChange }: Cust
       <div id="provider-custom" className="space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-sm font-semibold text-slate-100">Custom Providers</h2>
-            <p className="text-xs text-slate-400">OpenAI-compatible endpoints and mappings</p>
+            <h2 className="text-sm font-semibold text-[var(--text-primary)]">{t('customProvidersTitle')}</h2>
+            <p className="text-xs text-[var(--text-muted)]">{t('customSectionDescription')}</p>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="secondary" onClick={() => setShowGroupModal(true)} className="px-2.5 py-1 text-xs">
-              Manage Groups
+              {t("manageGroupsButton")}
             </Button>
             <Button onClick={() => setShowCustomProviderModal(true)} className="px-2.5 py-1 text-xs">
-              Add Custom Provider
+              {t("addCustomProviderButton")}
             </Button>
           </div>
         </div>
@@ -354,25 +357,25 @@ export function CustomProviderSection({ showToast, onProviderCountChange }: Cust
         {loading ? (
           <div className="flex items-center justify-center p-8">
             <div className="flex flex-col items-center gap-3">
-              <div className="size-8 animate-spin rounded-full border-4 border-white/20 border-t-blue-500"></div>
-              <p className="text-sm text-white/70">Loading custom providers...</p>
+              <div className="size-8 animate-spin rounded-full border-4 border-[var(--surface-border)] border-t-blue-500"></div>
+              <p className="text-sm text-[var(--text-secondary)]">{t('loadingCustomProviders')}</p>
             </div>
           </div>
         ) : groups.length === 0 && ungroupedProviders.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-4 p-8 text-center">
-            <div className="flex size-14 items-center justify-center rounded-full border border-slate-700/70 bg-slate-900/30">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400" aria-hidden="true">
+            <div className="flex size-14 items-center justify-center rounded-full border border-[var(--surface-border)] bg-[var(--surface-base)]">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--text-muted)]" aria-hidden="true">
                 <circle cx="12" cy="12" r="10" />
                 <line x1="12" y1="8" x2="12" y2="12" />
                 <line x1="12" y1="16" x2="12.01" y2="16" />
               </svg>
             </div>
             <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-slate-100">No custom providers configured</h3>
-              <p className="text-xs text-slate-400">Add an OpenAI-compatible provider to extend your AI capabilities</p>
+              <h3 className="text-sm font-semibold text-[var(--text-primary)]">{t('noCustomProviders')}</h3>
+              <p className="text-xs text-[var(--text-muted)]">{t('noCustomProvidersDescription')}</p>
             </div>
             <Button onClick={() => setShowCustomProviderModal(true)} className="px-3 py-1.5 text-xs">
-              Add Custom Provider
+              {t("addCustomProviderButton")}
             </Button>
           </div>
         ) : (
@@ -421,9 +424,9 @@ export function CustomProviderSection({ showToast, onProviderCountChange }: Cust
         isOpen={deleteGroupDialog.isOpen}
         onClose={() => setDeleteGroupDialog({ isOpen: false, groupId: null })}
         onConfirm={handleDeleteGroup}
-        title="Delete Provider Group"
-        message="Are you sure you want to delete this group? The providers inside will not be deleted, they will just become ungrouped. This action cannot be undone."
-        confirmLabel="Delete"
+        title={t("deleteGroupTitle")}
+        message={t("deleteGroupMessage")}
+        confirmLabel={t("deleteGroupButton")}
         variant="danger"
       />
     </>

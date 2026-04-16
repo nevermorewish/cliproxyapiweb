@@ -1,15 +1,23 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { TimeFilter } from "@/components/usage/time-filter";
-import { UsageCharts } from "@/components/usage/usage-charts";
+const UsageCharts = dynamic(
+  () => import("@/components/usage/usage-charts").then(mod => ({ default: mod.UsageCharts })),
+  { ssr: false, loading: () => <div className="h-64 animate-pulse rounded-lg bg-[var(--surface-muted)]" /> }
+);
+const CostEstimation = dynamic(
+  () => import("@/components/usage/cost-estimation").then(mod => ({ default: mod.CostEstimation })),
+  { ssr: false, loading: () => <div className="h-32 animate-pulse rounded-lg bg-[var(--surface-muted)]" /> }
+);
 import { UsageRequestEvents } from "@/components/usage/usage-request-events";
 import { UsageTable } from "@/components/usage/usage-table";
 import { API_ENDPOINTS } from "@/lib/api-endpoints";
-import { useTranslation } from "@/lib/i18n-client";
 
+import { useTranslations } from "next-intl";
 interface KeyUsage {
   keyName: string;
   username?: string;
@@ -89,6 +97,15 @@ interface UsageResponse {
   isAdmin: boolean;
 }
 
+interface CollectionStatus {
+  lastCollectedAt: string | null;
+  lastStatus: string;
+  errorMessage: string | null;
+  recordsStored: number;
+  isHealthy: boolean;
+  consecutiveFailures: number;
+}
+
 type DateFilter = "today" | "7d" | "30d" | "all" | "custom";
 
 function shouldPollDashboard(): boolean {
@@ -122,44 +139,43 @@ function getDateRange(period: DateFilter, customFrom?: string, customTo?: string
   }
 }
 
-function getRelativeTime(isoString: string, t: (key: string, params?: Record<string, string | number>) => string): string {
-  if (!isoString) return t("usage.neverSynced");
-  const diff = Date.now() - new Date(isoString).getTime();
-  const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return t("usage.justNow");
-  if (minutes < 60) return t("usage.minutesAgo", { count: minutes });
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return t("usage.hoursAgo", { count: hours });
-  return t("usage.daysAgo", { count: Math.floor(hours / 24) });
-}
-
-function getStatusColor(isoString: string): string {
-  if (!isoString) return "bg-red-500";
-  const diff = Date.now() - new Date(isoString).getTime();
-  const minutes = Math.floor(diff / 60000);
-  if (minutes < 10) return "bg-emerald-500";
-  if (minutes < 30) return "bg-yellow-500";
-  return "bg-red-500";
-}
-
 function formatLatencyValue(value: number): string {
   return `${value.toLocaleString()} ms`;
 }
 
 export default function UsagePage() {
+  const t = useTranslations("usage");
+
   const [usageData, setUsageData] = useState<UsageData | null>(null);
+  const [collectionStatus, setCollectionStatus] = useState<CollectionStatus | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [triggeringCollection, setTriggeringCollection] = useState(false);
   const [activeFilter, setActiveFilter] = useState<DateFilter>("7d");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
   const { showToast } = useToast();
-  const { t } = useTranslation();
   const isFirstLoadRef = useRef(true);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const abortController = new AbortController();
+
+    async function fetchCollectionStatus() {
+      try {
+        const res = await fetch(API_ENDPOINTS.USAGE.COLLECTION_STATUS, { 
+          signal: abortController.signal 
+        });
+        if (res.ok) {
+          const status: CollectionStatus = await res.json();
+          if (!abortController.signal.aborted) {
+            setCollectionStatus(status);
+          }
+        }
+      } catch {
+        // Silently ignore collection status errors
+      }
+    }
 
     async function collectAndFetch(showLoading: boolean) {
       if (showLoading) {
@@ -168,22 +184,27 @@ export default function UsagePage() {
 
       try {
         const { from, to } = getDateRange(activeFilter, customFrom, customTo);
-        const res = await fetch(`/api/usage/history?from=${from}&to=${to}`, { signal: abortController.signal });
+        
+        // Fetch both usage data and collection status in parallel
+        const [usageRes] = await Promise.all([
+          fetch(`/api/usage/history?from=${from}&to=${to}`, { signal: abortController.signal }),
+          fetchCollectionStatus(),
+        ]);
 
-        if (!res.ok) {
-          showToast(t("usage.loadError"), "error");
+        if (!usageRes.ok) {
+          showToast(t("toastLoadFailed"), "error");
           setLoading(false);
           return;
         }
 
-        const json: UsageResponse = await res.json();
+        const json: UsageResponse = await usageRes.json();
         if (abortController.signal.aborted) return;
         setUsageData(json.data);
         setIsAdmin(json.isAdmin);
         setLoading(false);
       } catch {
         if (abortController.signal.aborted) return;
-        showToast(t("common.networkError"), "error");
+        showToast(t("toastNetworkError"), "error");
         setLoading(false);
       }
     }
@@ -193,10 +214,12 @@ export default function UsagePage() {
       isFirstLoadRef.current = false;
     }
 
+    // Poll every 60 seconds for fresh usage data
+    // This is much more responsive than the previous 5-minute interval
     intervalRef.current = setInterval(() => {
       if (!shouldPollDashboard()) return;
       void collectAndFetch(false);
-    }, 300000);
+    }, 60000);
 
     return () => {
       abortController.abort();
@@ -204,7 +227,7 @@ export default function UsagePage() {
         clearInterval(intervalRef.current);
       }
     };
-  }, [activeFilter, customFrom, customTo, showToast]);
+  }, [activeFilter, customFrom, customTo, showToast, t]);
 
   const handleFilterChange = (filter: DateFilter) => {
     setActiveFilter(filter);
@@ -214,6 +237,36 @@ export default function UsagePage() {
   const handleCustomDateChange = () => {
     if (customFrom && customTo) {
       handleFilterChange("custom");
+    }
+  };
+
+  const handleTriggerCollection = async () => {
+    if (!isAdmin || triggeringCollection) return;
+    
+    setTriggeringCollection(true);
+    try {
+      const res = await fetch(API_ENDPOINTS.USAGE.COLLECT, { method: "POST" });
+      if (res.ok) {
+        showToast(t("collectionTriggered"), "success");
+        // Refresh collection status after a short delay
+        setTimeout(async () => {
+          try {
+            const statusRes = await fetch(API_ENDPOINTS.USAGE.COLLECTION_STATUS);
+            if (statusRes.ok) {
+              const status: CollectionStatus = await statusRes.json();
+              setCollectionStatus(status);
+            }
+          } catch {
+            // Silently ignore
+          }
+        }, 2000);
+      } else {
+        showToast(t("collectionFailedToast"), "error");
+      }
+    } catch {
+      showToast(t("collectionFailedToast"), "error");
+    } finally {
+      setTriggeringCollection(false);
     }
   };
 
@@ -233,7 +286,7 @@ export default function UsagePage() {
       const res = await fetch(`/api/usage/history?from=${from}&to=${to}`);
 
       if (!res.ok) {
-        showToast("加载使用数据失败", "error");
+        showToast(t("toastLoadFailed"), "error");
         setLoading(false);
         return;
       }
@@ -243,30 +296,78 @@ export default function UsagePage() {
       setIsAdmin(json.isAdmin);
       setLoading(false);
     } catch {
-      showToast(t("common.networkError"), "error");
+      showToast(t("toastNetworkError"), "error");
       setLoading(false);
     }
   };
 
+  function getCollectionStatusColor(status: CollectionStatus | null): string {
+    if (!status || !status.lastCollectedAt) return "bg-gray-500";
+    
+    if (status.consecutiveFailures > 0) return "bg-red-500";
+    
+    const diff = Date.now() - new Date(status.lastCollectedAt).getTime();
+    const minutes = Math.floor(diff / 60000);
+    
+    if (minutes < 10) return "bg-emerald-500";
+    if (minutes < 30) return "bg-yellow-500";
+    return "bg-red-500";
+  }
+
+  function getCollectionStatusText(status: CollectionStatus | null): string {
+    if (!status || !status.lastCollectedAt) {
+      return t("collectionNeverRan");
+    }
+    
+    if (status.consecutiveFailures > 0) {
+      return t("collectionFailed");
+    }
+    
+    const diff = Date.now() - new Date(status.lastCollectedAt).getTime();
+    const minutes = Math.floor(diff / 60000);
+    
+    if (minutes < 1) return t("collectedJustNow");
+    if (minutes < 60) return t("collectedMinutesAgo", { count: minutes });
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return t("collectedHoursAgo", { count: hours });
+    return t("collectedDaysAgo", { count: Math.floor(hours / 24) });
+  }
+
   const hasInputOutputBreakdown = usageData && (usageData.totals.inputTokens > 0 || usageData.totals.outputTokens > 0);
   const hasLatencyBreakdown = (usageData?.latencySummary?.sampleCount ?? 0) > 0;
-  const collectorStatusColor = usageData ? getStatusColor(usageData.collectorStatus.lastCollectedAt) : "bg-gray-500";
-  const collectorTimeAgo = usageData ? getRelativeTime(usageData.collectorStatus.lastCollectedAt, t) : t("usage.unknown");
 
   return (
     <div className="space-y-4">
-      <section className="rounded-lg border border-slate-700/70 bg-slate-900/40 p-4">
+      <section className="rounded-lg border border-[var(--surface-border)] bg-[var(--surface-base)] p-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight text-slate-100">{t("usage.title")}</h1>
+            <h1 className="text-xl font-semibold tracking-tight text-[var(--text-primary)]">{t('pageTitle')}</h1>
             <div className="mt-1 flex items-center gap-2">
-              <div className={`h-2 w-2 rounded-full ${collectorStatusColor}`}></div>
-              <p className="text-xs text-slate-400">{t("usage.lastSync")} {collectorTimeAgo}</p>
+              <div className={`h-2 w-2 rounded-full ${getCollectionStatusColor(collectionStatus)}`}></div>
+              <p className="text-xs text-[var(--text-muted)]">
+                {t('collectionStatus')}: {getCollectionStatusText(collectionStatus)}
+              </p>
+              {collectionStatus?.errorMessage && (
+                <span className="text-xs text-rose-600" title={collectionStatus.errorMessage}>
+                  ⚠️
+                </span>
+              )}
             </div>
           </div>
-          <Button onClick={handleRefresh} disabled={loading}>
-            {t("usage.refreshData")}
-          </Button>
+          <div className="flex items-center gap-2">
+            {isAdmin && (
+              <Button 
+                variant="secondary"
+                onClick={handleTriggerCollection} 
+                disabled={triggeringCollection || loading}
+              >
+                {triggeringCollection ? t("triggering") : t("triggerCollection")}
+              </Button>
+            )}
+            <Button onClick={handleRefresh} disabled={loading}>
+              {t('refreshButton')}
+            </Button>
+          </div>
         </div>
       </section>
 
@@ -281,67 +382,71 @@ export default function UsagePage() {
       />
 
       {loading ? (
-        <div className="rounded-lg border border-slate-700/70 bg-slate-900/40 p-6 text-center text-sm text-slate-400">
-          {t("usage.loadingData")}
+        <div className="rounded-lg border border-[var(--surface-border)] bg-[var(--surface-base)] p-6 text-center text-sm text-[var(--text-muted)]">
+          {t('loadingText')}
         </div>
       ) : !usageData ? (
-        <div className="rounded-md border border-rose-500/40 bg-rose-500/10 p-4 text-sm text-rose-200">
-          {t("usage.loadFailed")}
+        <div className="rounded-md border border-rose-500/20 bg-rose-500/10 p-4 text-sm text-rose-700">
+          {t('errorLoadFailed')}
         </div>
       ) : (
         <>
           <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-2">
-            <div className="rounded-lg border border-slate-700/70 bg-slate-900/40 px-2.5 py-2">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">{t("usage.totalRequests")}</p>
-              <p className="mt-0.5 text-xs font-semibold text-slate-100">{usageData.totals.totalRequests.toLocaleString()}</p>
+            <div className="rounded-lg border border-[var(--surface-border)] bg-[var(--surface-base)] px-2.5 py-2">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">{t('totalRequests')}</p>
+              <p className="mt-0.5 text-xs font-semibold text-[var(--text-primary)]">{usageData.totals.totalRequests.toLocaleString()}</p>
             </div>
-            <div className="rounded-lg border border-slate-700/70 bg-slate-900/40 px-2.5 py-2">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">{t("usage.successCount")}</p>
-              <p className="mt-0.5 text-xs font-semibold text-emerald-300">{usageData.totals.successCount.toLocaleString()}</p>
+            <div className="rounded-lg border border-[var(--surface-border)] bg-[var(--surface-base)] px-2.5 py-2">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">{t('successful')}</p>
+              <p className="mt-0.5 text-xs font-semibold text-emerald-700">{usageData.totals.successCount.toLocaleString()}</p>
             </div>
-            <div className="rounded-lg border border-slate-700/70 bg-slate-900/40 px-2.5 py-2">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">{t("usage.failureCount")}</p>
-              <p className="mt-0.5 text-xs font-semibold text-rose-300">{usageData.totals.failureCount.toLocaleString()}</p>
+            <div className="rounded-lg border border-[var(--surface-border)] bg-[var(--surface-base)] px-2.5 py-2">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">{t('failedLabel')}</p>
+              <p className="mt-0.5 text-xs font-semibold text-rose-600">{usageData.totals.failureCount.toLocaleString()}</p>
             </div>
-            <div className="rounded-lg border border-slate-700/70 bg-slate-900/40 px-2.5 py-2">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">{t("usage.totalTokens")}</p>
-              <p className="mt-0.5 text-xs font-semibold text-slate-100">{usageData.totals.totalTokens.toLocaleString()}</p>
+            <div className="rounded-lg border border-[var(--surface-border)] bg-[var(--surface-base)] px-2.5 py-2">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">{t('totalTokens')}</p>
+              <p className="mt-0.5 text-xs font-semibold text-[var(--text-primary)]">{usageData.totals.totalTokens.toLocaleString()}</p>
             </div>
           </div>
 
           {hasInputOutputBreakdown && (
             <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-2">
-              <div className="rounded-lg border border-slate-700/70 bg-slate-900/40 px-2.5 py-2">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">{t("usage.inputTokens")}</p>
-                <p className="mt-0.5 text-xs font-semibold text-slate-100">{usageData.totals.inputTokens.toLocaleString()}</p>
+              <div className="rounded-lg border border-[var(--surface-border)] bg-[var(--surface-base)] px-2.5 py-2">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">{t('inputTokens')}</p>
+                <p className="mt-0.5 text-xs font-semibold text-[var(--text-primary)]">{usageData.totals.inputTokens.toLocaleString()}</p>
               </div>
-              <div className="rounded-lg border border-slate-700/70 bg-slate-900/40 px-2.5 py-2">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">{t("usage.outputTokens")}</p>
-                <p className="mt-0.5 text-xs font-semibold text-slate-100">{usageData.totals.outputTokens.toLocaleString()}</p>
+              <div className="rounded-lg border border-[var(--surface-border)] bg-[var(--surface-base)] px-2.5 py-2">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">{t('outputTokens')}</p>
+                <p className="mt-0.5 text-xs font-semibold text-[var(--text-primary)]">{usageData.totals.outputTokens.toLocaleString()}</p>
               </div>
-              <div className="rounded-lg border border-slate-700/70 bg-slate-900/40 px-2.5 py-2">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">{t("usage.totalTokens")}</p>
-                <p className="mt-0.5 text-xs font-semibold text-slate-100">{usageData.totals.totalTokens.toLocaleString()}</p>
+              <div className="rounded-lg border border-[var(--surface-border)] bg-[var(--surface-base)] px-2.5 py-2">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">{t('totalTokens')}</p>
+                <p className="mt-0.5 text-xs font-semibold text-[var(--text-primary)]">{usageData.totals.totalTokens.toLocaleString()}</p>
               </div>
             </div>
           )}
 
           {hasLatencyBreakdown && usageData?.latencySummary ? (
             <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-2">
-              <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/10 px-2.5 py-2">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-cyan-200/70">{t("usage.avgLatency")}</p>
-                <p className="mt-0.5 text-xs font-semibold text-cyan-100">{formatLatencyValue(usageData.latencySummary.averageMs)}</p>
+              <div className="rounded-lg border border-[var(--surface-border)] bg-[var(--surface-muted)] px-2.5 py-2">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">{t('avgLatency')}</p>
+                <p className="mt-0.5 text-xs font-semibold text-[var(--text-primary)]">{formatLatencyValue(usageData.latencySummary.averageMs)}</p>
               </div>
               <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-2.5 py-2">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-200/70">{t("usage.p95Latency")}</p>
-                <p className="mt-0.5 text-xs font-semibold text-amber-100">{formatLatencyValue(usageData.latencySummary.p95Ms)}</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-700/70">P95 Latency</p>
+                <p className="mt-0.5 text-xs font-semibold text-amber-800">{formatLatencyValue(usageData.latencySummary.p95Ms)}</p>
               </div>
               <div className="rounded-lg border border-rose-500/20 bg-rose-500/10 px-2.5 py-2">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-rose-200/70">{t("usage.slowestRequest")}</p>
-                <p className="mt-0.5 text-xs font-semibold text-rose-100">{formatLatencyValue(usageData.latencySummary.maxMs)}</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-rose-600">{t('slowestRequest')}</p>
+                <p className="mt-0.5 text-xs font-semibold text-rose-800">{formatLatencyValue(usageData.latencySummary.maxMs)}</p>
               </div>
             </div>
           ) : null}
+
+          <CostEstimation
+            keys={usageData.keys}
+          />
 
           <UsageCharts
             dailyBreakdown={usageData.dailyBreakdown}

@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { API_ENDPOINTS } from "@/lib/api-endpoints";
-import { useTranslation } from "@/lib/i18n-client";
+import { PublicThemeToggle } from "@/components/public-theme-toggle";
 
 export default function SetupPage() {
   const [username, setUsername] = useState("");
@@ -14,19 +15,19 @@ export default function SetupPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const { t } = useTranslation();
+  const t = useTranslations("setup");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
     if (password !== confirmPassword) {
-      setError(t("setup.passwordMismatch"));
+      setError(t("passwordMismatchError"));
       return;
     }
 
     if (password.length < 8) {
-      setError(t("setup.passwordTooShort"));
+      setError(t("passwordTooShortError"));
       return;
     }
 
@@ -44,7 +45,7 @@ export default function SetupPage() {
       if (!res.ok) {
         const errorMsg = typeof data.error === "string" 
           ? data.error 
-          : (data.error?.message ?? t("setup.initFailed"));
+          : (data.error?.message ?? t('setupFailed'));
         setError(errorMsg);
         setLoading(false);
         return;
@@ -54,37 +55,37 @@ export default function SetupPage() {
       router.push("/dashboard");
       router.refresh();
     } catch {
-      setError(t("setup.networkError"));
+      setError(t("networkError"));
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
+    <main id="main-content" className="flex min-h-screen items-center justify-center px-4">
+      <PublicThemeToggle />
       <div className="w-full max-w-sm">
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-purple-600 shadow-lg shadow-purple-600/30">
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-black shadow-[rgba(0,0,0,0.08)_0px_0px_0px_0.5px]">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-              <title>Setup</title>
               <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight text-white">
-            CLIProxyAPI
+          <h1 className="text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
+            {t("pageTitle")}
           </h1>
-          <p className="mt-1 text-sm text-white/50">{t("setup.subtitle")}</p>
+          <p className="mt-1 text-sm text-[var(--text-muted)]">{t("firstTimeSetup")}</p>
         </div>
 
-         <div className="glass-card rounded-xl p-6 shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
-          <div className="mb-4 rounded-xl bg-amber-500/15 border border-amber-400/25 p-3 text-sm text-amber-200">
-            {t("setup.warning")}
+         <div className="glass-card rounded-2xl p-6">
+           <div className="mb-4 rounded-xl bg-amber-500/10 border border-amber-500/20 p-3 text-sm text-amber-700">
+            {t("createAdminDescription")}
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="username" className="mb-2 block text-xs font-medium text-white/70 uppercase tracking-wider">
-                {t("setup.username")}
+              <label htmlFor="username" className="mb-2 block text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">
+                {t("usernameLabel")}
               </label>
               <Input
                 type="text"
@@ -93,13 +94,13 @@ export default function SetupPage() {
                 onChange={setUsername}
                 required
                 autoComplete="username"
-                placeholder="admin"
+                placeholder={t("usernamePlaceholder")}
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="mb-2 block text-xs font-medium text-white/70 uppercase tracking-wider">
-                {t("setup.password")}
+              <label htmlFor="password" className="mb-2 block text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">
+                {t("passwordLabel")}
               </label>
               <Input
                 type="password"
@@ -108,13 +109,13 @@ export default function SetupPage() {
                 onChange={setPassword}
                 required
                 autoComplete="new-password"
-                placeholder={t("setup.passwordPlaceholder")}
+                placeholder={t("passwordPlaceholder")}
               />
             </div>
 
             <div>
-              <label htmlFor="confirmPassword" className="mb-2 block text-xs font-medium text-white/70 uppercase tracking-wider">
-                {t("setup.confirmPassword")}
+              <label htmlFor="confirmPassword" className="mb-2 block text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">
+                {t("confirmPasswordLabel")}
               </label>
               <Input
                 type="password"
@@ -127,21 +128,21 @@ export default function SetupPage() {
             </div>
 
             {error && (
-              <div className="rounded-xl bg-red-500/20 border border-red-400/30 p-3 text-sm text-red-300">
+              <div role="alert" aria-live="polite" className="rounded-xl bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-600">
                 {error}
               </div>
             )}
 
             <Button type="submit" disabled={loading} className="w-full">
-              {loading ? t("setup.submitting") : t("setup.submit")}
+              {loading ? t("creatingAccount") : t("createAccount")}
             </Button>
           </form>
         </div>
 
-        <p className="mt-6 text-center text-xs text-white/30">
-          {t("setup.footer")}
+        <p className="mt-6 text-center text-xs text-[var(--text-muted)]">
+          {t("footerText")}
         </p>
       </div>
-    </div>
+    </main>
   );
 }

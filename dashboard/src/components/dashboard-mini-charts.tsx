@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import {
   AreaChart,
   Area,
   ResponsiveContainer,
   Tooltip,
 } from "recharts";
-import { CHART_COLORS, formatCompact, TOOLTIP_STYLE } from "@/components/ui/chart-theme";
+import { CHART_COLORS, formatCompact, useChartTheme } from "@/components/ui/chart-theme";
 
 interface DailyPoint {
   date: string;
@@ -70,12 +71,14 @@ export function DashboardMiniCharts() {
     fetchData();
   }, []);
 
+  const t = useTranslations("common");
+
   if (!data || data.daily.length < 2) return null;
 
   return (
     <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
       <MiniSparkCard
-        label="Requests (7d)"
+        label={`${t("requests")} (7d)`}
         value={formatCompact(data.totalRequests)}
         data={data.daily}
         dataKey="requests"
@@ -83,7 +86,7 @@ export function DashboardMiniCharts() {
         gradientId="reqGrad"
       />
       <MiniSparkCard
-        label="Tokens (7d)"
+        label={`${t("tokens")} (7d)`}
         value={formatCompact(data.totalTokens)}
         data={data.daily}
         dataKey="tokens"
@@ -91,7 +94,7 @@ export function DashboardMiniCharts() {
         gradientId="tokGrad"
       />
       <MiniSparkCard
-        label="Success Rate (7d)"
+        label={`${t("successRate")} (7d)`}
         value={`${data.successRate.toFixed(1)}%`}
         data={data.daily}
         dataKey="successRate"
@@ -117,17 +120,18 @@ function MiniSparkCard({
   color: string;
   gradientId: string;
 }) {
+  const { tooltipStyle } = useChartTheme();
   return (
-    <div className="rounded-md border border-slate-700/70 bg-slate-900/25 px-3 py-2">
+    <div className="rounded-md border border-[var(--surface-border)] bg-[var(--surface-base)] px-3 py-2">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">
             {label}
           </p>
-          <p className="mt-0.5 text-sm font-semibold text-slate-100">{value}</p>
+          <p className="mt-0.5 text-sm font-semibold text-[var(--text-primary)]">{value}</p>
         </div>
       </div>
-      <div className="mt-1.5 h-10">
+      <div className="mt-1.5 h-10" role="img" aria-label={`${label}: ${value}`}>
         <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} initialDimension={{ width: 320, height: 200 }}>
           <AreaChart data={data} margin={{ top: 2, right: 2, left: 2, bottom: 0 }}>
             <defs>
@@ -137,17 +141,17 @@ function MiniSparkCard({
               </linearGradient>
             </defs>
             <Tooltip
-              contentStyle={TOOLTIP_STYLE.contentStyle}
-              labelStyle={TOOLTIP_STYLE.labelStyle}
-              itemStyle={TOOLTIP_STYLE.itemStyle}
-              formatter={(val) => [formatCompact(Number(val ?? 0)), label.split(" ")[0]]}
-              labelFormatter={(_l, payload) => {
-                const dateStr = payload?.[0]?.payload?.date;
-                if (!dateStr) return "";
-                const d = new Date(String(dateStr) + "T00:00:00");
-                return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-              }}
-            />
+               contentStyle={tooltipStyle.contentStyle}
+               labelStyle={tooltipStyle.labelStyle}
+               itemStyle={tooltipStyle.itemStyle}
+               formatter={(val) => [formatCompact(Number(val ?? 0)), label.split(" ")[0]]}
+               labelFormatter={(_l, payload) => {
+                 const dateStr = payload?.[0]?.payload?.date;
+                 if (!dateStr) return "";
+                 const d = new Date(String(dateStr) + "T00:00:00");
+                 return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+               }}
+             />
             <Area
               type="monotone"
               dataKey={dataKey}

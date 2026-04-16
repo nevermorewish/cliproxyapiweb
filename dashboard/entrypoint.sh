@@ -77,7 +77,6 @@ async function migrate() {
        "tokenHash" TEXT NOT NULL,
        "syncApiKey" TEXT,
        "lastUsedAt" TIMESTAMP(3),
-       "revokedAt" TIMESTAMP(3),
        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
        CONSTRAINT "sync_tokens_pkey" PRIMARY KEY ("id")
      );
@@ -91,6 +90,13 @@ async function migrate() {
     DO $$ BEGIN
       ALTER TABLE "sync_tokens" ADD COLUMN "syncApiKey" TEXT;
     EXCEPTION WHEN duplicate_column THEN NULL; END $$;
+    -- Remove revokedAt column if present (migration from soft-delete to hard-delete)
+    DO $$ BEGIN
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='sync_tokens' AND column_name='revokedAt') THEN
+        DELETE FROM "sync_tokens" WHERE "revokedAt" IS NOT NULL;
+        ALTER TABLE "sync_tokens" DROP COLUMN "revokedAt";
+      END IF;
+    END $$;
 
     -- Agent model overrides table (stores MCP servers & custom plugins in overrides JSONB)
     CREATE TABLE IF NOT EXISTS "agent_model_overrides" (
@@ -395,6 +401,47 @@ async function migrate() {
       "errorMessage" TEXT,
       "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
       CONSTRAINT "collector_state_pkey" PRIMARY KEY ("id")
+    );
+
+    -- Backup status enum (matches Prisma BackupStatus)
+    DO $$ BEGIN
+      CREATE TYPE "BackupStatus" AS ENUM ('PENDING', 'IN_PROGRESS', 'COMPLETED', 'FAILED', 'RESTORING');
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END $$;
+
+    -- Backup type enum (matches Prisma BackupType)  
+    DO $$ BEGIN
+      CREATE TYPE "BackupType" AS ENUM ('MANUAL', 'SCHEDULED');
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END $$;
+
+    -- Backup records table (stores backup metadata)
+    CREATE TABLE IF NOT EXISTS "backup_records" (
+      "id" TEXT NOT NULL,
+      "filename" TEXT NOT NULL,
+      "sizeBytes" BIGINT NOT NULL DEFAULT 0,
+      "status" "BackupStatus" NOT NULL DEFAULT 'PENDING',
+      "type" "BackupType" NOT NULL DEFAULT 'MANUAL',
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "completedAt" TIMESTAMP(3),
+      "createdById" TEXT NOT NULL,
+      "checksum" TEXT,
+      "metadata" JSONB,
+      CONSTRAINT "backup_records_pkey" PRIMARY KEY ("id")
+    );
+    CREATE INDEX IF NOT EXISTS "backup_records_createdAt_idx" ON "backup_records"("createdAt");
+    CREATE INDEX IF NOT EXISTS "backup_records_createdById_idx" ON "backup_records"("createdById");
+
+    -- Backup schedule table (singleton for scheduled backup config)
+    CREATE TABLE IF NOT EXISTS "backup_schedule" (
+      "id" TEXT NOT NULL,
+      "enabled" BOOLEAN NOT NULL DEFAULT false,
+      "cronExpr" TEXT NOT NULL DEFAULT '0 3 * * *',
+      "retention" INTEGER NOT NULL DEFAULT 7,
+      "lastRun" TIMESTAMP(3),
+      "nextRun" TIMESTAMP(3),
+      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "backup_schedule_pkey" PRIMARY KEY ("id")
     );
     `);
 

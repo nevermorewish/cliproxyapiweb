@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { HookGroupName } from "@/lib/config-generators/oh-my-opencode-types";
 import { HOOK_GROUPS } from "@/lib/config-generators/oh-my-opencode-types";
 
@@ -20,12 +21,14 @@ export function HooksSection({
   onHookToggle,
   onHookGroupToggle,
 }: HooksSectionProps) {
+  const t = useTranslations("ohMyOpenCode");
+
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.02] overflow-hidden transition-all hover:border-white/15">
+    <div className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] overflow-hidden transition-colors hover:border-[var(--surface-border)]">
       <button
         type="button"
         onClick={onToggleExpand}
-        className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-medium text-white/60 hover:text-white/90 hover:bg-white/[0.04] transition-colors"
+        className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-muted)] transition-colors"
       >
         <svg
           width="10"
@@ -41,9 +44,9 @@ export function HooksSection({
         >
           <polyline points="9 18 15 12 9 6" />
         </svg>
-        <span className="flex-1 text-left">Hooks</span>
-        <span className="px-1.5 py-0.5 rounded-md bg-white/5 text-white/50 text-[10px] font-mono">
-          {disabledHooks.length} disabled
+        <span className="flex-1 text-left">{t("hooks")}</span>
+        <span className="px-1.5 py-0.5 rounded-md bg-[var(--surface-muted)] text-[var(--text-muted)] text-[10px] font-mono">
+          {t("disabledCount", { count: disabledHooks.length })}
         </span>
       </button>
       {isExpanded && (
@@ -56,7 +59,7 @@ export function HooksSection({
                 <button
                   type="button"
                   onClick={() => onHookGroupToggle(groupName)}
-                  className="flex items-center gap-2 text-xs text-white/50 hover:text-white/80 transition-colors"
+                  className="flex items-center gap-2 text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
                 >
                   <svg
                     width="10"
@@ -72,20 +75,20 @@ export function HooksSection({
                   >
                     <polyline points="9 18 15 12 9 6" />
                   </svg>
-                  {groupName} ({disabledCount}/{hooks.length} disabled)
+                  {groupName} {t("hookGroupStats", { disabled: disabledCount, total: hooks.length })}
                 </button>
                 {isGroupExpanded && (
                   <div className="space-y-1 pl-4 mt-1">
                     {hooks.map((hook) => {
                       const isEnabled = !disabledHooks.includes(hook);
                       return (
-                        <div key={hook} className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-white/5">
-                          <span className="text-xs text-white/70 font-mono">{hook}</span>
+                        <div key={hook} className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-[var(--surface-muted)]">
+                          <span className="text-xs text-[var(--text-secondary)] font-mono">{hook}</span>
                           <button
                             type="button"
                             onClick={() => onHookToggle(hook)}
                             className={`w-9 h-5 rounded-full transition-colors relative ${
-                              isEnabled ? "bg-emerald-500/60" : "bg-white/10"
+                              isEnabled ? "bg-emerald-500/100" : "bg-[var(--surface-hover)]"
                             }`}
                           >
                             <span

@@ -7,7 +7,22 @@ import { modelsDevCache, CACHE_TTL, CACHE_KEYS } from "@/lib/cache";
 export type { OAuthAccount, ConfigData } from "./shared";
 
 export function getProxyUrl(): string {
-  return process.env.API_URL || "";
+  const apiUrl = process.env.API_URL?.trim();
+  if (apiUrl) {
+    return apiUrl;
+  }
+
+  const managementUrl = process.env.CLIPROXYAPI_MANAGEMENT_URL?.trim();
+  if (!managementUrl) {
+    return "";
+  }
+
+  try {
+    const url = new URL(managementUrl);
+    return `${url.protocol}//${url.host}`;
+  } catch {
+    return "";
+  }
 }
 
 export function getInternalProxyUrl(): string {
@@ -161,10 +176,12 @@ export function inferModelDefinition(
 }
 
 /**
- * Deduplicate proxy models: prefer dot-notation (claude-opus-4.1) over
- * hyphenated (claude-opus-4-1), and drop dated variants (-20250514) when
- * the undated version exists. The proxy rotates accounts regardless of
- * which alias is used, so duplicates just clutter the config.
+ * Deduplicate proxy models: drop dated variants (-YYYYMMDD) when the undated
+ * base exists, and drop hyphenated versions (claude-opus-4-1) when the
+ * dot-notation version (claude-opus-4.1) is also present in the model list.
+ *
+ * Model IDs are preserved exactly as returned by the proxy - no automatic
+ * transformation is applied. The proxy requires exact model ID matches.
  */
 function deduplicateProxyModels(proxyModels: ProxyModel[]): ProxyModel[] {
   const idSet = new Set(proxyModels.map((m) => m.id));
@@ -183,8 +200,8 @@ function deduplicateProxyModels(proxyModels: ProxyModel[]): ProxyModel[] {
       if (dotBase !== base && idSet.has(dotBase)) return false;
     }
     
-    // 2. Drop hyphenated version if dot-notation exists
-    //    e.g. claude-opus-4-1 -> claude-opus-4.1 exists -> drop
+    // 2. Drop hyphenated version if dot-notation exists in the proxy response
+    //    e.g. claude-opus-4-1 -> claude-opus-4.1 exists -> drop hyphenated
     const dotVersion = hyphenatedToDot(id);
     if (dotVersion !== id && idSet.has(dotVersion)) return false;
     
@@ -279,10 +296,34 @@ export interface LspEntry {
   extensions?: string[];
 }
 
+export interface PermissionConfig {
+  edit?: "allow" | "deny";
+  bash?: {
+    git?: "allow" | "deny";
+    test?: "allow" | "deny";
+    [command: string]: "allow" | "deny" | undefined;
+  };
+}
+
 export interface GenerateConfigOptions {
   plugins?: string[];
   mcps?: McpEntry[];
   lsps?: LspEntry[];
+  defaultModel?: string;
+  permission?: PermissionConfig;
+}
+
+function resolveConfigModel(
+  models: Record<string, ModelDefinition>,
+  options?: GenerateConfigOptions,
+): string {
+  const manualModel = options?.defaultModel?.trim();
+  if (manualModel) {
+    return manualModel.includes("/") ? manualModel : `cliproxyapi/${manualModel}`;
+  }
+
+  const fallbackModelId = Object.keys(models)[0] ?? "gemini-2.5-flash";
+  return `cliproxyapi/${fallbackModelId}`;
 }
 
 export function generateConfigJson(
@@ -304,11 +345,11 @@ export function generateConfigJson(
      }
      modelEntries[id] = entry;
    }
-   const firstModelId = Object.keys(models)[0] ?? "gemini-2.5-flash";
+   const configModel = resolveConfigModel(models, options);
  
    const plugins = options?.plugins ?? [
      "opencode-cliproxyapi-sync@latest",
-     "oh-my-opencode@latest",
+     "oh-my-openagent@latest",
    ];
  
    const configObj: Record<string, unknown> = {
@@ -324,9 +365,9 @@ export function generateConfigJson(
          },
          models: modelEntries,
        },
-     },
-     model: `cliproxyapi/${firstModelId}`,
-   };
+      },
+       model: configModel,
+    };
 
   if (options?.mcps && options.mcps.length > 0) {
     const mcpServers: Record<string, Record<string, unknown>> = {};
@@ -363,6 +404,10 @@ export function generateConfigJson(
       lspServers[lsp.language] = lspEntry;
     }
     configObj.lsp = lspServers;
+  }
+
+  if (options?.permission) {
+    configObj.permission = options.permission;
   }
 
   return JSON.stringify(configObj, null, 2);

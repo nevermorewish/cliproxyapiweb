@@ -9,6 +9,10 @@ import { API_ENDPOINTS } from "@/lib/api-endpoints";
 import { TelegramSettings } from "@/components/settings/telegram-settings";
 import { ProviderSettings } from "@/components/settings/provider-settings";
 import { PasswordSettings } from "@/components/settings/password-settings";
+import { BackupSettings } from "@/components/settings/backup-settings";
+import { useTranslations } from 'next-intl';
+
+type SettingsTab = "general" | "backup";
 
 interface ProxyUpdateInfo {
   currentVersion: string;
@@ -35,7 +39,6 @@ interface SyncToken {
   syncApiKeyName: string | null;
   createdAt: string;
   lastUsedAt: string | null;
-  isRevoked: boolean;
 }
 
 interface AvailableApiKey {
@@ -66,36 +69,47 @@ export default function SettingsPage() {
   const [showConfirmProxyUpdate, setShowConfirmProxyUpdate] = useState(false);
   const [pendingProxyVersion, setPendingProxyVersion] = useState<string>("latest");
   const [showConfirmDashboardUpdate, setShowConfirmDashboardUpdate] = useState(false);
-  const [showConfirmRevokeToken, setShowConfirmRevokeToken] = useState(false);
-  const [pendingRevokeTokenId, setPendingRevokeTokenId] = useState<string | null>(null);
+  const [showConfirmDeleteToken, setShowConfirmDeleteToken] = useState(false);
+  const [pendingDeleteTokenId, setPendingDeleteTokenId] = useState<string | null>(null);
   const [showConfirmRevokeSessions, setShowConfirmRevokeSessions] = useState(false);
 
   const { showToast } = useToast();
+  const t = useTranslations('settings');
+  const tc = useTranslations('common');
+  const tb = useTranslations('backup');
 
-  const fetchProxyUpdateInfo = useCallback(async (signal?: AbortSignal) => {
+  const [activeTab, setActiveTab] = useState<SettingsTab>("general");
+
+  const fetchProxyUpdateInfo = useCallback(async (signal?: AbortSignal, forceRefresh = false) => {
     setProxyUpdateLoading(true);
     try {
-      const res = await fetch(API_ENDPOINTS.UPDATE.CHECK, { signal });
+      const url = forceRefresh 
+        ? `${API_ENDPOINTS.UPDATE.CHECK}?refresh=true`
+        : API_ENDPOINTS.UPDATE.CHECK;
+      const res = await fetch(url, { signal });
       if (res.ok) {
         const data = await res.json();
         setProxyUpdateInfo(data);
       }
-    } catch (err) {
+    } catch {
       if (signal?.aborted) return;
     } finally {
       if (!signal?.aborted) setProxyUpdateLoading(false);
     }
   }, []);
 
-  const fetchDashboardUpdateInfo = useCallback(async (signal?: AbortSignal) => {
+  const fetchDashboardUpdateInfo = useCallback(async (signal?: AbortSignal, forceRefresh = false) => {
     setDashboardUpdateLoading(true);
     try {
-      const res = await fetch(API_ENDPOINTS.UPDATE.DASHBOARD_CHECK, { signal });
+      const url = forceRefresh 
+        ? `${API_ENDPOINTS.UPDATE.DASHBOARD_CHECK}?refresh=true`
+        : API_ENDPOINTS.UPDATE.DASHBOARD_CHECK;
+      const res = await fetch(url, { signal });
       if (res.ok) {
         const data = await res.json();
         setDashboardUpdateInfo(data);
       }
-    } catch (err) {
+    } catch {
       if (signal?.aborted) return;
     } finally {
       if (!signal?.aborted) setDashboardUpdateLoading(false);
@@ -113,7 +127,7 @@ export default function SettingsPage() {
           setAvailableApiKeys(data.apiKeys);
         }
       }
-    } catch (err) {
+    } catch {
       if (signal?.aborted) return;
     } finally {
       if (!signal?.aborted) setSyncTokensLoading(false);
@@ -157,6 +171,14 @@ export default function SettingsPage() {
     setShowConfirmProxyUpdate(true);
   };
 
+  const handleRefreshDashboardUpdate = useCallback(() => {
+    fetchDashboardUpdateInfo(undefined, true);
+  }, [fetchDashboardUpdateInfo]);
+
+  const handleRefreshProxyUpdate = useCallback(() => {
+    fetchProxyUpdateInfo(undefined, true);
+  }, [fetchProxyUpdateInfo]);
+
   const handleProxyUpdate = async () => {
     const version = pendingProxyVersion;
     setProxyUpdating(true);
@@ -168,16 +190,16 @@ export default function SettingsPage() {
       });
 
       if (res.ok) {
-        showToast(`Updated to ${version}. Service is restarting...`, "success");
+        showToast(t('toastProxyUpdated', { version }), 'success');
         setTimeout(() => {
           fetchProxyUpdateInfo();
         }, 10000);
       } else {
         const data = await res.json();
-        showToast(extractApiError(data, "Update failed"), "error");
+        showToast(extractApiError(data, t('errorUpdateFailed')), "error");
       }
     } catch {
-      showToast("Network error during update", "error");
+      showToast(t('toastNetworkErrorUpdate'), 'error');
     } finally {
       setProxyUpdating(false);
     }
@@ -199,17 +221,17 @@ export default function SettingsPage() {
       const data = await res.json().catch(() => null);
 
       if (res.ok) {
-        const msg = typeof data?.message === "string" ? data.message : "Dashboard updated. Restarting...";
+        const msg = typeof data?.message === "string" ? data.message : t('toastDashboardUpdated');
         showToast(msg, "success");
         setTimeout(() => {
           fetchDashboardUpdateInfo();
         }, 10000);
       } else {
-        const errMsg = extractApiError(data, "Update failed");
+        const errMsg = extractApiError(data, t('errorUpdateFailed'));
         showToast(errMsg, "error");
       }
     } catch {
-      showToast("Network error during update", "error");
+      showToast(t('toastNetworkErrorUpdate'), 'error');
     } finally {
       setDashboardUpdating(false);
     }
@@ -225,30 +247,30 @@ export default function SettingsPage() {
 
       if (!res.ok) {
         const data = await res.json();
-        showToast(extractApiError(data, "Failed to generate token"), "error");
+        showToast(extractApiError(data, t('errorGenerateTokenFailed')), "error");
         setGeneratingToken(false);
         return;
       }
 
       const data = await res.json();
       setGeneratedToken(data.token);
-      showToast("Token generated successfully", "success");
+      showToast(t('toastTokenGenerateSuccess'), 'success');
       fetchSyncTokens();
       setGeneratingToken(false);
     } catch {
-      showToast("Network error", "error");
+      showToast(tc('networkError'), 'error');
       setGeneratingToken(false);
     }
   };
 
-  const confirmRevokeToken = (id: string) => {
-    setPendingRevokeTokenId(id);
-    setShowConfirmRevokeToken(true);
+  const confirmDeleteToken = (id: string) => {
+    setPendingDeleteTokenId(id);
+    setShowConfirmDeleteToken(true);
   };
 
-  const handleRevokeToken = async () => {
-    if (!pendingRevokeTokenId) return;
-    const id = pendingRevokeTokenId;
+  const handleDeleteToken = async () => {
+    if (!pendingDeleteTokenId) return;
+    const id = pendingDeleteTokenId;
 
     try {
       const res = await fetch(`${API_ENDPOINTS.CONFIG_SYNC.TOKENS}/${id}`, {
@@ -257,14 +279,14 @@ export default function SettingsPage() {
 
       if (!res.ok) {
         const data = await res.json();
-        showToast(extractApiError(data, "Failed to revoke token"), "error");
+        showToast(extractApiError(data, t('errorDeleteTokenFailed')), "error");
         return;
       }
 
-      showToast("Token revoked successfully", "success");
+      showToast(t('toastTokenDeleted'), 'success');
       fetchSyncTokens();
     } catch {
-      showToast("Network error", "error");
+      showToast(tc('networkError'), 'error');
     }
   };
 
@@ -277,26 +299,26 @@ export default function SettingsPage() {
       });
 
       if (res.ok) {
-        showToast("API key updated for sync token", "success");
+        showToast(t('toastApiKeyUpdated'), 'success');
         const selectedKey = availableApiKeys.find((k) => k.id === apiKeyId);
         setSyncTokens((prev) =>
           prev.map((t) => (t.id === tokenId ? { ...t, syncApiKeyId: apiKeyId || null, syncApiKeyName: selectedKey?.name || null } : t))
         );
       } else {
         const data = await res.json();
-        showToast(extractApiError(data, "Failed to update API key"), "error");
+        showToast(extractApiError(data, t('errorUpdateApiKeyFailed')), "error");
       }
     } catch {
-      showToast("Network error", "error");
+      showToast(tc('networkError'), 'error');
     }
   };
 
   const handleCopyToken = async (token: string) => {
     try {
       await navigator.clipboard.writeText(token);
-      showToast("Token copied to clipboard", "success");
+      showToast(t('toastTokenCopied'), 'success');
     } catch {
-      showToast("Failed to copy token", "error");
+      showToast(t('toastTokenCopyFailed'), 'error');
     }
   };
 
@@ -313,30 +335,58 @@ export default function SettingsPage() {
 
       if (!res.ok) {
         const data = await res.json();
-        showToast(extractApiError(data, "Failed to revoke sessions"), "error");
+        showToast(extractApiError(data, t('errorRevokeSessionsFailed')), "error");
         setRevokingSessions(false);
         return;
       }
 
       const data = await res.json();
-      showToast(data.message || "All sessions revoked", "success");
+      showToast(data.message || t('toastSessionsRevoked'), 'success');
       setRevokingSessions(false);
     } catch {
-      showToast("Network error", "error");
+      showToast(tc('networkError'), 'error');
       setRevokingSessions(false);
     }
   };
 
   return (
     <div className="space-y-6">
-      <section className="rounded-lg border border-slate-700/70 bg-slate-900/40 p-4">
-        <h1 className="text-xl font-semibold tracking-tight text-slate-100">Settings</h1>
-        <p className="mt-1 text-sm text-slate-400">Manage account, security, config sync, and system operations.</p>
+      <section className="rounded-lg border border-[var(--surface-border)]/70 bg-[var(--surface-base)] p-4">
+        <h1 className="text-xl font-semibold tracking-tight text-[var(--text-primary)]">{t('pageTitle')}</h1>
+        <p className="mt-1 text-sm text-[var(--text-muted)]">{t('pageDescription')}</p>
       </section>
 
-      <div className="flex flex-col lg:flex-row gap-6">
-        <section className="rounded-lg border border-slate-700/70 bg-slate-900/40 p-6 flex flex-col gap-6 lg:flex-1 lg:min-w-0">
-          <TelegramSettings
+      {/* Tab Bar */}
+      <div className="flex gap-1 rounded-lg border border-[var(--surface-border)]/70 bg-[var(--surface-base)] p-1">
+        <button
+          type="button"
+          onClick={() => setActiveTab("general")}
+          className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+            activeTab === "general"
+              ? "bg-[var(--surface-muted)] text-[var(--text-primary)]"
+              : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+          }`}
+        >
+          {tb('tabGeneral')}
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("backup")}
+          className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+            activeTab === "backup"
+              ? "bg-[var(--surface-muted)] text-[var(--text-primary)]"
+              : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+          }`}
+        >
+          {tb('tabBackup')}
+        </button>
+      </div>
+
+      {activeTab === "general" && (
+        <>
+          <div className="flex flex-col lg:flex-row gap-6">
+            <section className="rounded-lg border border-[var(--surface-border)]/70 bg-[var(--surface-base)] p-6 flex flex-col gap-6 lg:flex-1 lg:min-w-0">
+              <TelegramSettings
             syncTokens={syncTokens}
             syncTokensLoading={syncTokensLoading}
             generatingToken={generatingToken}
@@ -347,12 +397,12 @@ export default function SettingsPage() {
             onClearGeneratedToken={() => setGeneratedToken(null)}
             onCopyToken={handleCopyToken}
             onToggleInstructions={() => setShowInstructions(!showInstructions)}
-            onConfirmRevokeToken={confirmRevokeToken}
+            onConfirmDeleteToken={confirmDeleteToken}
             onUpdateTokenApiKey={handleUpdateTokenApiKey}
           />
         </section>
 
-        <section className="rounded-lg border border-slate-700/70 bg-slate-900/40 p-6 flex flex-col gap-6 lg:flex-1 lg:min-w-0 lg:self-start lg:sticky lg:top-4">
+        <section className="rounded-lg border border-[var(--surface-border)]/70 bg-[var(--surface-base)] p-6 flex flex-col gap-6 lg:flex-1 lg:min-w-0 lg:self-start lg:sticky lg:top-4">
           <PasswordSettings
             cliProxyVersion={cliProxyVersion}
             cliProxyLoading={cliProxyLoading}
@@ -363,7 +413,7 @@ export default function SettingsPage() {
         </section>
       </div>
 
-      <section className="rounded-lg border border-slate-700/70 bg-slate-900/40 p-6 flex flex-col gap-6">
+      <section className="rounded-lg border border-[var(--surface-border)]/70 bg-[var(--surface-base)] p-6 flex flex-col gap-6">
         <ProviderSettings
           proxyUpdateInfo={proxyUpdateInfo}
           proxyUpdateLoading={proxyUpdateLoading}
@@ -373,11 +423,11 @@ export default function SettingsPage() {
           dashboardUpdating={dashboardUpdating}
           onConfirmProxyUpdate={confirmProxyUpdate}
           onConfirmDashboardUpdate={confirmDashboardUpdate}
-          onRefreshProxyUpdate={fetchProxyUpdateInfo}
-          onRefreshDashboardUpdate={fetchDashboardUpdateInfo}
+          onRefreshProxyUpdate={handleRefreshProxyUpdate}
+          onRefreshDashboardUpdate={handleRefreshDashboardUpdate}
         />
 
-        <div className="border-t border-slate-700/70 pt-6">
+        <div className="border-t border-[var(--surface-border)]/70 pt-6">
           <DeployDashboard />
         </div>
       </section>
@@ -389,10 +439,10 @@ export default function SettingsPage() {
           setPendingProxyVersion("latest");
         }}
         onConfirm={handleProxyUpdate}
-        title="Update CLIProxyAPI"
-        message={`Update CLIProxyAPI to ${pendingProxyVersion}? The service will restart.`}
-        confirmLabel="Update"
-        cancelLabel="Cancel"
+        title={t('confirmProxyUpdate.title')}
+        message={t('confirmProxyUpdate.message', { version: pendingProxyVersion })}
+        confirmLabel={t('confirmProxyUpdate.confirmLabel')}
+        cancelLabel={tc('cancel')}
         variant="warning"
       />
 
@@ -400,24 +450,24 @@ export default function SettingsPage() {
         isOpen={showConfirmDashboardUpdate}
         onClose={() => setShowConfirmDashboardUpdate(false)}
         onConfirm={handleDashboardUpdate}
-        title="Update Dashboard"
-        message="Update Dashboard to latest version? The container will restart."
-        confirmLabel="Update"
-        cancelLabel="Cancel"
+        title={t('confirmDashboardUpdate.title')}
+        message={t('confirmDashboardUpdate.message')}
+        confirmLabel={t('confirmDashboardUpdate.confirmLabel')}
+        cancelLabel={tc('cancel')}
         variant="warning"
       />
 
       <ConfirmDialog
-        isOpen={showConfirmRevokeToken}
+        isOpen={showConfirmDeleteToken}
         onClose={() => {
-          setShowConfirmRevokeToken(false);
-          setPendingRevokeTokenId(null);
+          setShowConfirmDeleteToken(false);
+          setPendingDeleteTokenId(null);
         }}
-        onConfirm={handleRevokeToken}
-        title="Revoke Token"
-        message="Are you sure you want to revoke this token?"
-        confirmLabel="Revoke"
-        cancelLabel="Cancel"
+        onConfirm={handleDeleteToken}
+        title={t('confirmDeleteToken.title')}
+        message={t('confirmDeleteToken.message')}
+        confirmLabel={t('confirmDeleteToken.confirmLabel')}
+        cancelLabel={tc('cancel')}
         variant="danger"
       />
 
@@ -425,12 +475,21 @@ export default function SettingsPage() {
         isOpen={showConfirmRevokeSessions}
         onClose={() => setShowConfirmRevokeSessions(false)}
         onConfirm={handleRevokeAllSessions}
-        title="Force Logout All Users"
-        message="Force logout all users from all devices? This action cannot be undone."
-        confirmLabel="Force Logout"
-        cancelLabel="Cancel"
+        title={t('confirmRevokeSessions.title')}
+        message={t('confirmRevokeSessions.message')}
+        confirmLabel={t('confirmRevokeSessions.confirmLabel')}
+        cancelLabel={tc('cancel')}
         variant="danger"
       />
+        </>
+      )}
+
+      {activeTab === "backup" && (
+        <BackupSettings
+          currentVersion={dashboardUpdateInfo?.currentVersion ?? "unknown"}
+          showToast={showToast}
+        />
+      )}
     </div>
   );
 }

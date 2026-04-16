@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { OhMyOpenCodeFullConfig } from "@/lib/config-generators/oh-my-opencode-types";
 import { BROWSER_PROVIDERS } from "@/lib/config-generators/oh-my-opencode-types";
 
@@ -16,12 +17,14 @@ export function BrowserSection({
   overrides,
   onBrowserProviderChange,
 }: BrowserSectionProps) {
+  const t = useTranslations("ohMyOpenCode");
+
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.02] overflow-hidden transition-all hover:border-white/15">
+    <div className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] overflow-hidden transition-colors hover:border-[var(--surface-border)]">
       <button
         type="button"
         onClick={onToggleExpand}
-        className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-medium text-white/60 hover:text-white/90 hover:bg-white/[0.04] transition-colors"
+        className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-muted)] transition-colors"
       >
         <svg
           width="10"
@@ -37,15 +40,15 @@ export function BrowserSection({
         >
           <polyline points="9 18 15 12 9 6" />
         </svg>
-        <span className="flex-1 text-left">Browser Automation</span>
+        <span className="flex-1 text-left">{t("browserAutomation")}</span>
       </button>
       {isExpanded && (
         <div className="px-3 pb-3 space-y-1">
-          <span className="text-xs text-white/50">Provider</span>
+          <span className="text-xs text-[var(--text-muted)]">{t("providerLabel")}</span>
           <select
             value={overrides.browser_automation_engine?.provider ?? "playwright"}
             onChange={(e) => onBrowserProviderChange(e.target.value)}
-            className="w-full px-2.5 py-1.5 text-xs bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-violet-400/40"
+            className="w-full px-2.5 py-1.5 text-xs bg-[var(--surface-muted)] border border-[var(--surface-border)] rounded-lg text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]/20"
           >
             {BROWSER_PROVIDERS.map((provider) => (
               <option key={provider} value={provider}>

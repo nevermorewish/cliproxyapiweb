@@ -8,11 +8,11 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { extractApiError } from "@/lib/utils";
 import { API_ENDPOINTS } from "@/lib/api-endpoints";
-import { useTranslation } from "@/lib/i18n-client";
 import type { CurrentUserLike } from "@/components/providers/api-key-section";
 import { OAuthCredentialList, type OAuthAccountWithOwnership } from "@/components/providers/oauth-credential-list";
 import { OAuthImportForm } from "@/components/providers/oauth-import-form";
 import { OAuthActions } from "@/components/providers/oauth-actions";
+import { useTranslations } from "next-intl";
 
 type ShowToast = ReturnType<typeof useToast>["showToast"];
 
@@ -21,6 +21,7 @@ interface OAuthSectionProps {
   currentUser: CurrentUserLike | null;
   refreshProviders: () => Promise<void>;
   onAccountCountChange: (count: number) => void;
+  incognitoBrowserEnabled?: boolean;
 }
 
 const OAUTH_PROVIDERS = [
@@ -158,35 +159,27 @@ function isTabVisible(): boolean {
   return document.visibilityState === "visible";
 }
 
-const validateCallbackUrl = (value: string) => {
-  if (!value.trim()) {
-    return { status: CALLBACK_VALIDATION.EMPTY, message: "Paste the full URL." };
-  }
+type ValidationResult =
+  | { status: typeof CALLBACK_VALIDATION.EMPTY }
+  | { status: typeof CALLBACK_VALIDATION.INVALID; reason: "url" | "params" }
+  | { status: typeof CALLBACK_VALIDATION.VALID };
 
+const validateCallbackUrl = (value: string): ValidationResult => {
+  if (!value.trim()) {
+    return { status: CALLBACK_VALIDATION.EMPTY };
+  }
   let parsedUrl: URL;
   try {
     parsedUrl = new URL(value.trim());
   } catch {
-    return {
-      status: CALLBACK_VALIDATION.INVALID,
-      message: "That doesn't look like a valid URL.",
-    };
+    return { status: CALLBACK_VALIDATION.INVALID, reason: "url" };
   }
-
   const code = parsedUrl.searchParams.get("code");
   const state = parsedUrl.searchParams.get("state");
-
   if (!code || !state) {
-    return {
-      status: CALLBACK_VALIDATION.INVALID,
-      message: "URL must include both code and state parameters.",
-    };
+    return { status: CALLBACK_VALIDATION.INVALID, reason: "params" };
   }
-
-  return {
-    status: CALLBACK_VALIDATION.VALID,
-    message: "Callback URL looks good. Ready to submit.",
-  };
+  return { status: CALLBACK_VALIDATION.VALID };
 };
 
 export function OAuthSection({
@@ -194,16 +187,25 @@ export function OAuthSection({
   currentUser,
   refreshProviders,
   onAccountCountChange,
+  incognitoBrowserEnabled = false,
 }: OAuthSectionProps) {
-  const { t } = useTranslation();
+  const t = useTranslations("providers");
+  const getCallbackMessage = (result: ReturnType<typeof validateCallbackUrl>): string => {
+    if (result.status === CALLBACK_VALIDATION.EMPTY) return t("callbackMsgEmpty");
+    if (result.status === CALLBACK_VALIDATION.INVALID) {
+      return result.reason === "url" ? t("callbackMsgInvalidUrl") : t("callbackMsgMissingParams");
+    }
+    return t("callbackMsgValid");
+  };
+
   const [isOAuthModalOpen, setIsOAuthModalOpen] = useState(false);
   const [oauthModalStatus, setOauthModalStatus] = useState<ModalStatus>(MODAL_STATUS.IDLE);
   const [selectedOAuthProviderId, setSelectedOAuthProviderId] = useState<OAuthProviderId | null>(null);
-  const [authState, setAuthState] = useState<string | null>(null);
   const [callbackUrl, setCallbackUrl] = useState("");
   const [callbackValidation, setCallbackValidation] = useState<CallbackValidation>(CALLBACK_VALIDATION.EMPTY);
-  const [callbackMessage, setCallbackMessage] = useState("Paste the full URL.");
+  const [callbackMessage, setCallbackMessage] = useState("");
   const [oauthErrorMessage, setOauthErrorMessage] = useState<string | null>(null);
+  const [authLaunchUrl, setAuthLaunchUrl] = useState<string | null>(null);
   const pollingIntervalRef = useRef<number | null>(null);
   const pollingAttemptsRef = useRef(0);
   const noCallbackClaimTimeoutRef = useRef<number | null>(null);
@@ -212,12 +214,15 @@ export function OAuthSection({
   const selectedOAuthProviderIdRef = useRef<OAuthProviderId | null>(null);
   const [deviceCodeInfo, setDeviceCodeInfo] = useState<{ verificationUrl: string; userCode: string } | null>(null);
   const deviceCodePopupOpenedRef = useRef(false);
+  const incognitoRef = useRef(incognitoBrowserEnabled);
+  incognitoRef.current = incognitoBrowserEnabled;
   const [accounts, setAccounts] = useState<OAuthAccountWithOwnership[]>([]);
   const [oauthAccountsLoading, setOauthAccountsLoading] = useState(true);
   const [showConfirmOAuthDelete, setShowConfirmOAuthDelete] = useState(false);
   const [pendingOAuthDelete, setPendingOAuthDelete] = useState<{ accountId: string; accountName: string } | null>(null);
   const [togglingAccountId, setTogglingAccountId] = useState<string | null>(null);
   const [claimingAccountName, setClaimingAccountName] = useState<string | null>(null);
+  const [quotaActionKey, setQuotaActionKey] = useState<string | null>(null);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importProviderId, setImportProviderId] = useState<OAuthProviderId | null>(null);
   const [importJsonContent, setImportJsonContent] = useState("");
@@ -249,7 +254,7 @@ export function OAuthSection({
     try {
       const res = await fetch(API_ENDPOINTS.PROVIDERS.OAUTH);
       if (!res.ok) {
-        showToast("Failed to load OAuth accounts", "error");
+        showToast(t("toastOAuthLoadFailed"), "error");
         setOauthAccountsLoading(false);
         return;
       }
@@ -261,10 +266,10 @@ export function OAuthSection({
       setOauthAccountsLoading(false);
     } catch {
       setOauthAccountsLoading(false);
-      showToast("Network error", "error");
-      setOauthErrorMessage("Network error while loading accounts.");
+      showToast(t("toastNetworkError"), "error");
+      setOauthErrorMessage(t("errorOAuthAccountsNetwork"));
     }
-  }, [onAccountCountChange, showToast]);
+  }, [onAccountCountChange, showToast, t]);
 
   const toggleOAuthAccount = async (accountId: string, currentlyDisabled: boolean) => {
     setTogglingAccountId(accountId);
@@ -276,14 +281,14 @@ export function OAuthSection({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        showToast(extractApiError(data, "Failed to update account"), "error");
+        showToast(extractApiError(data, t("errorUpdateAccountFailed")), "error");
       } else {
-        showToast(`OAuth account ${!currentlyDisabled ? "disabled" : "enabled"}`, "success");
+        showToast(!currentlyDisabled ? t("toastOAuthDisabled") : t("toastOAuthEnabled"), "success");
         await loadAccounts();
         await refreshProviders();
       }
     } catch {
-      showToast("Network error", "error");
+      showToast(t("toastNetworkError"), "error");
     } finally {
       setTogglingAccountId(null);
     }
@@ -299,15 +304,75 @@ export function OAuthSection({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        showToast(extractApiError(data, "Failed to claim account"), "error");
+        showToast(extractApiError(data, t("toastOAuthClaimFailed")), "error");
       } else {
-        showToast("Account claimed successfully", "success");
+        showToast(t("toastOAuthClaimSuccess"), "success");
         await loadAccounts();
       }
     } catch {
-      showToast("Network error", "error");
+      showToast(t("toastNetworkError"), "error");
     } finally {
       setClaimingAccountName(null);
+    }
+  };
+
+  const updateQuotaGroupManual = async (
+    authId: string,
+    groupId: string,
+    manualSuspended: boolean
+  ) => {
+    const actionKey = `${authId}:${groupId}:${manualSuspended ? "manual-on" : "manual-off"}`;
+    setQuotaActionKey(actionKey);
+    try {
+      const res = await fetch(API_ENDPOINTS.MANAGEMENT.AUTH_FILE_QUOTA_GROUPS_MANUAL, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          auth_id: authId,
+          group_id: groupId,
+          manual_suspended: manualSuspended,
+          reason: manualSuspended ? "dashboard_manual_suspend" : "",
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showToast(extractApiError(data, "Failed to update quota group"), "error");
+        return;
+      }
+      showToast(manualSuspended ? "Quota group suspended" : "Manual suspension lifted", "success");
+      await loadAccounts();
+      await refreshProviders();
+    } catch {
+      showToast(t("toastNetworkError"), "error");
+    } finally {
+      setQuotaActionKey(null);
+    }
+  };
+
+  const clearQuotaGroupCooldown = async (authId: string, groupId: string) => {
+    const actionKey = `${authId}:${groupId}:auto-clear`;
+    setQuotaActionKey(actionKey);
+    try {
+      const res = await fetch(API_ENDPOINTS.MANAGEMENT.AUTH_FILE_QUOTA_GROUPS_AUTO_CLEAR, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          auth_id: authId,
+          group_id: groupId,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showToast(extractApiError(data, "Failed to clear quota cooldown"), "error");
+        return;
+      }
+      showToast("Quota cooldown cleared", "success");
+      await loadAccounts();
+      await refreshProviders();
+    } catch {
+      showToast(t("toastNetworkError"), "error");
+    } finally {
+      setQuotaActionKey(null);
     }
   };
 
@@ -330,7 +395,7 @@ export function OAuthSection({
       if (pollingAttemptsRef.current > 60) {
         stopPolling();
         setOauthModalStatus(MODAL_STATUS.ERROR);
-        setOauthErrorMessage("Timed out waiting for authorization.");
+        setOauthErrorMessage(t("errorOAuthTimeout"));
         return;
       }
 
@@ -338,15 +403,10 @@ export function OAuthSection({
         const res = await fetch(
           `/api/management/get-auth-status?state=${encodeURIComponent(state)}`
         );
-        if (!res.ok || pollingAttemptsRef.current <= 3 || pollingAttemptsRef.current % 10 === 0) {
-          // #region agent log
-          fetch("http://127.0.0.1:7769/ingest/d2e80aa9-18b8-4947-969b-cd12bcef18c3", { method: "POST", headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "34ec83" }, body: JSON.stringify({ sessionId: "34ec83", runId: "baseline", hypothesisId: "H3", location: "oauth-section.tsx:pollAuthStatus", message: "oauth status poll tick", data: { statePresent: Boolean(state), attempt: pollingAttemptsRef.current, status: res.status, ok: res.ok, tabVisible: isTabVisible() }, timestamp: Date.now() }) }).catch(() => {});
-          // #endregion
-        }
         if (!res.ok) {
           stopPolling();
           setOauthModalStatus(MODAL_STATUS.ERROR);
-          setOauthErrorMessage("Failed to check authorization status.");
+          setOauthErrorMessage(t("errorOAuthCheckStatus"));
           return;
         }
 
@@ -360,7 +420,8 @@ export function OAuthSection({
             verificationUrl: data.verification_url,
             userCode: data.user_code,
           });
-          if (!deviceCodePopupOpenedRef.current) {
+          setAuthLaunchUrl(data.verification_url);
+          if (!deviceCodePopupOpenedRef.current && !incognitoRef.current) {
             deviceCodePopupOpenedRef.current = true;
             window.open(data.verification_url, "oauth", "width=600,height=800");
           }
@@ -368,12 +429,9 @@ export function OAuthSection({
         }
 
         if (data.status === "ok") {
-          // #region agent log
-          fetch("http://127.0.0.1:7769/ingest/d2e80aa9-18b8-4947-969b-cd12bcef18c3", { method: "POST", headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "34ec83" }, body: JSON.stringify({ sessionId: "34ec83", runId: "baseline", hypothesisId: "H3", location: "oauth-section.tsx:pollAuthStatus:ok", message: "oauth status reached ok", data: { attempt: pollingAttemptsRef.current }, timestamp: Date.now() }) }).catch(() => {});
-          // #endregion
           stopPolling();
           setOauthModalStatus(MODAL_STATUS.SUCCESS);
-          showToast("OAuth account connected", "success");
+          showToast(t("toastOAuthConnected"), "success");
           await refreshProviders();
           void loadAccounts();
           return;
@@ -382,16 +440,13 @@ export function OAuthSection({
         if (data.status === "error") {
           stopPolling();
           setOauthModalStatus(MODAL_STATUS.ERROR);
-          setOauthErrorMessage(extractApiError(data, "OAuth authorization failed."));
+          setOauthErrorMessage(extractApiError(data, t("errorOAuthFailed")));
           return;
         }
       } catch {
-        // #region agent log
-        fetch("http://127.0.0.1:7769/ingest/d2e80aa9-18b8-4947-969b-cd12bcef18c3", { method: "POST", headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "34ec83" }, body: JSON.stringify({ sessionId: "34ec83", runId: "baseline", hypothesisId: "H3", location: "oauth-section.tsx:pollAuthStatus:catch", message: "oauth status poll threw", data: { attempt: pollingAttemptsRef.current }, timestamp: Date.now() }) }).catch(() => {});
-        // #endregion
         stopPolling();
         setOauthModalStatus(MODAL_STATUS.ERROR);
-        setOauthErrorMessage("Network error while polling authorization.");
+        setOauthErrorMessage(t("errorOAuthPollNetwork"));
       }
     }, isTabVisible() ? OAUTH_STATUS_POLL_INTERVAL_MS : OAUTH_STATUS_POLL_INTERVAL_HIDDEN_MS);
   };
@@ -403,11 +458,11 @@ export function OAuthSection({
     selectedOAuthProviderIdRef.current = null;
     setSelectedOAuthProviderId(null);
     authStateRef.current = null;
-    setAuthState(null);
     setCallbackUrl("");
     setCallbackValidation(CALLBACK_VALIDATION.EMPTY);
-    setCallbackMessage("Paste the full URL.");
+    setCallbackMessage(t("callbackMsgEmpty"));
     setOauthErrorMessage(null);
+    setAuthLaunchUrl(null);
     setDeviceCodeInfo(null);
     deviceCodePopupOpenedRef.current = false;
   };
@@ -447,7 +502,7 @@ export function OAuthSection({
         stopNoCallbackClaimPolling();
         stopPolling();
         setOauthModalStatus(MODAL_STATUS.ERROR);
-        setOauthErrorMessage(extractApiError(data, "Failed to complete OAuth ownership claim."));
+        setOauthErrorMessage(extractApiError(data, t("errorOwnershipClaimFailed")));
         return;
       }
 
@@ -479,7 +534,8 @@ export function OAuthSection({
     setOauthErrorMessage(null);
     setCallbackUrl("");
     setCallbackValidation(CALLBACK_VALIDATION.EMPTY);
-    setCallbackMessage("Paste the full URL.");
+    setCallbackMessage(t("callbackMsgEmpty"));
+    setAuthLaunchUrl(null);
 
     try {
       const res = await fetch(provider.authEndpoint);
@@ -495,17 +551,16 @@ export function OAuthSection({
       const data: AuthUrlResponse = await res.json();
       if (!data.state) {
         setOauthModalStatus(MODAL_STATUS.ERROR);
-        setOauthErrorMessage("OAuth response missing state.");
+        setOauthErrorMessage(t("errorOAuthMissingState"));
         return;
       }
 
       if (!data.url && data.method === "device_code") {
         authStateRef.current = data.state;
-        setAuthState(data.state);
         setOauthModalStatus(MODAL_STATUS.POLLING);
         setCallbackValidation(CALLBACK_VALIDATION.VALID);
-        setCallbackMessage("Waiting for device authorization details...");
-        showToast("Initializing device authorization flow...", "info");
+        setCallbackMessage(t("callbackMsgWaitingDevice"));
+        showToast(t("toastOAuthInitDevice"), "info");
         pollAuthStatus(data.state);
         stopNoCallbackClaimPolling();
         void claimOAuthWithoutCallback(provider.id, data.state);
@@ -514,33 +569,37 @@ export function OAuthSection({
 
       if (!data.url) {
         setOauthModalStatus(MODAL_STATUS.ERROR);
-        setOauthErrorMessage("OAuth response missing URL.");
+        setOauthErrorMessage(t("errorOAuthMissingUrl"));
         return;
       }
-      const popupOpened = openAuthPopup(data.url);
-      if (!popupOpened) {
-        setOauthModalStatus(MODAL_STATUS.ERROR);
-        setOauthErrorMessage("Popup blocked. Allow pop-ups and try again.");
-        return;
+      setAuthLaunchUrl(data.url);
+
+      const shouldOpenPopup = !incognitoBrowserEnabled;
+      if (shouldOpenPopup) {
+        const popupOpened = openAuthPopup(data.url);
+        if (!popupOpened) {
+          setOauthModalStatus(MODAL_STATUS.ERROR);
+          setOauthErrorMessage(t("errorOAuthPopupBlocked"));
+          return;
+        }
       }
       authStateRef.current = data.state;
-      setAuthState(data.state);
       if (provider.requiresCallback) {
         setOauthModalStatus(MODAL_STATUS.WAITING);
         setCallbackValidation(CALLBACK_VALIDATION.EMPTY);
-        setCallbackMessage("Paste the full URL.");
-        showToast("OAuth window opened. Follow the steps below.", "info");
+        setCallbackMessage(t("callbackMsgEmpty"));
+        showToast(incognitoBrowserEnabled ? t("toastOAuthFollowStepsIncognito") : t("toastOAuthFollowStepsPopup"), "info");
       } else {
         setOauthModalStatus(MODAL_STATUS.POLLING);
         setCallbackValidation(CALLBACK_VALIDATION.VALID);
-        setCallbackMessage("No callback URL needed. Complete sign-in in the popup window.");
-        showToast("OAuth window opened. Complete sign-in in the popup.", "info");
+        setCallbackMessage(incognitoBrowserEnabled ? t("callbackMsgNoCallbackIncognito") : t("callbackMsgNoCallbackPopup"));
+        showToast(incognitoBrowserEnabled ? t("toastOAuthNoCallbackIncognito") : t("toastOAuthNoCallbackPopup"), "info");
         if (data.user_code && data.url) {
           setDeviceCodeInfo({
             verificationUrl: data.url,
             userCode: data.user_code,
           });
-          deviceCodePopupOpenedRef.current = true;
+          deviceCodePopupOpenedRef.current = shouldOpenPopup;
         }
         stopNoCallbackClaimPolling();
         void claimOAuthWithoutCallback(providerId, data.state);
@@ -549,15 +608,15 @@ export function OAuthSection({
       pollAuthStatus(data.state);
     } catch {
       setOauthModalStatus(MODAL_STATUS.ERROR);
-      setOauthErrorMessage("Network error while starting OAuth flow.");
+      setOauthErrorMessage(t("errorOAuthStartNetwork"));
     }
   };
 
   const handleCallbackChange = (value: string) => {
     setCallbackUrl(value);
-    const validation = validateCallbackUrl(value);
-    setCallbackValidation(validation.status);
-    setCallbackMessage(validation.message);
+    const result = validateCallbackUrl(value);
+    setCallbackValidation(result.status);
+    setCallbackMessage(getCallbackMessage(result));
   };
 
   const handleSubmitCallback = async () => {
@@ -566,14 +625,14 @@ export function OAuthSection({
     if (!currentProvider || !currentState) {
       console.warn("[OAuth] Submit failed - missing provider or state");
       setOauthModalStatus(MODAL_STATUS.ERROR);
-      setOauthErrorMessage("Missing provider or state. Please restart the flow.");
+      setOauthErrorMessage(t("errorOAuthMissingProviderState"));
       return;
     }
 
-    const validation = validateCallbackUrl(callbackUrl);
-    if (validation.status !== CALLBACK_VALIDATION.VALID) {
-      setCallbackValidation(validation.status);
-      setCallbackMessage(validation.message);
+    const result = validateCallbackUrl(callbackUrl);
+    if (result.status !== CALLBACK_VALIDATION.VALID) {
+      setCallbackValidation(result.status);
+      setCallbackMessage(getCallbackMessage(result));
       return;
     }
 
@@ -594,7 +653,7 @@ export function OAuthSection({
       if (!res.ok) {
         setOauthModalStatus(MODAL_STATUS.ERROR);
         setOauthErrorMessage(
-          extractApiError(data, "Failed to relay the OAuth callback URL.")
+          extractApiError(data, t("errorRelayCallbackFailed"))
         );
         return;
       }
@@ -604,7 +663,7 @@ export function OAuthSection({
       pollAuthStatus(currentState);
     } catch {
       setOauthModalStatus(MODAL_STATUS.ERROR);
-      setOauthErrorMessage("Network error while submitting callback URL.");
+      setOauthErrorMessage(t("errorOAuthCallbackNetwork"));
     }
   };
 
@@ -625,14 +684,14 @@ export function OAuthSection({
       });
       if (!res.ok) {
         const data = await res.json();
-        showToast(extractApiError(data, "Failed to remove OAuth account"), "error");
+        showToast(extractApiError(data, t("toastOAuthDeleteFailed")), "error");
         return;
       }
-      showToast("OAuth account removed", "success");
+      showToast(t("toastOAuthDeleted"), "success");
       await refreshProviders();
       void loadAccounts();
     } catch {
-      showToast("Network error", "error");
+      showToast(t("toastNetworkError"), "error");
     }
   };
 
@@ -743,12 +802,12 @@ export function OAuthSection({
 
       if (!res.ok) {
         setImportStatus("error");
-        setImportErrorMessage(extractApiError(data, "Failed to import credential."));
+        setImportErrorMessage(extractApiError(data, t("errorImportCredentialFailed")));
         return;
       }
 
       setImportStatus("success");
-      showToast("OAuth credential imported successfully", "success");
+      showToast(t("toastOAuthImportSuccess"), "success");
       await refreshProviders();
       void loadAccounts();
     } catch {
@@ -788,7 +847,7 @@ export function OAuthSection({
         showToast(extractApiError(data, "Failed to update proxy URL"), "error");
         return false;
       }
-      showToast(proxyUrl ? t("oauth.proxyUrlSet") : t("oauth.proxyUrlCleared"), "success");
+      showToast(proxyUrl ? "Proxy URL updated" : "Proxy URL cleared", "success");
       await loadAccounts();
       return true;
     } catch {
@@ -806,10 +865,10 @@ export function OAuthSection({
       <div id="provider-oauth" className="space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-sm font-semibold text-slate-100">OAuth Accounts</h2>
-            <p className="text-xs text-slate-400">Subscription-based provider connections</p>
+            <h2 className="text-sm font-semibold text-[var(--text-primary)]">{t('oauthAccountsTitle')}</h2>
+            <p className="text-xs text-[var(--text-muted)]">{t('oauthSectionDescription')}</p>
           </div>
-          <span className="text-xs font-medium text-slate-400">{accounts.length} connected</span>
+          <span className="text-xs font-medium text-[var(--text-muted)]">{accounts.length} connected</span>
         </div>
 
         <div className="space-y-3">
@@ -819,14 +878,21 @@ export function OAuthSection({
             currentUser={currentUser}
             togglingAccountId={togglingAccountId}
             claimingAccountName={claimingAccountName}
+            quotaActionKey={quotaActionKey}
             onToggle={toggleOAuthAccount}
             onDelete={confirmDeleteOAuth}
             onClaim={claimOAuthAccount}
             onUpdateProxyUrl={updateProxyUrl}
+            onForceSuspend={(authId, groupId) => void updateQuotaGroupManual(authId, groupId, true)}
+            onLiftManual={(authId, groupId) => void updateQuotaGroupManual(authId, groupId, false)}
+            onClearCooldown={(authId, groupId) => void clearQuotaGroupCooldown(authId, groupId)}
           />
 
-          <div className="rounded-sm border border-slate-700/70 bg-slate-900/30 p-3 text-xs text-slate-400">
-            <strong className="text-slate-200">Note:</strong> OAuth flows open in a popup window. Make sure pop-ups are allowed in your browser.
+          <div className="rounded-sm border border-[var(--surface-border)] bg-[var(--surface-base)] p-3 text-xs text-[var(--text-muted)]">
+            <strong className="text-[var(--text-primary)]">{t("noteLabel")}</strong>{" "}
+            {incognitoBrowserEnabled
+              ? t("oauthIncognitoNote")
+              : t("oauthPopupNote")}
           </div>
 
           <OAuthActions
@@ -840,13 +906,65 @@ export function OAuthSection({
       <Modal isOpen={isOAuthModalOpen} onClose={handleOAuthModalClose}>
         <ModalHeader>
           <ModalTitle>
-            {selectedOAuthProvider ? `Connect ${selectedOAuthProvider.name}` : "Connect"}
+            {t("oauthConnectTitle", { name: selectedOAuthProvider?.name ?? "" })}
           </ModalTitle>
         </ModalHeader>
         <ModalContent>
           {oauthModalStatus === MODAL_STATUS.LOADING && (
-            <div className="rounded-xl border-l-4 border-white/30 bg-white/5 p-4 text-sm text-white/80 backdrop-blur-xl">
+            <div className="rounded-xl border-l-4 border-[var(--surface-border)] bg-[var(--surface-muted)] p-4 text-sm text-[var(--text-secondary)]">
               Fetching authorization link...
+            </div>
+          )}
+
+          {authLaunchUrl && (oauthModalStatus === MODAL_STATUS.WAITING || oauthModalStatus === MODAL_STATUS.POLLING || oauthModalStatus === MODAL_STATUS.ERROR) && (
+            <div className={`rounded-xl border-l-4 p-4 text-sm ${
+              incognitoBrowserEnabled
+                ? "border-amber-300 bg-amber-500/10 text-amber-900"
+                : "border-[var(--surface-border)] bg-[var(--surface-muted)] text-[var(--text-secondary)]"
+            }`}>
+              <div className="font-medium text-[var(--text-primary)]">
+                {incognitoBrowserEnabled ? "Open This URL In A Private Window" : "Authorization URL"}
+              </div>
+              <p className="mt-2 text-[var(--text-secondary)]">
+                {incognitoBrowserEnabled
+                  ? t("oauthOpenManuallyIncognito")
+                  : t("oauthOpenManually")}
+              </p>
+              <div className="mt-3 rounded-lg bg-[var(--surface-muted)] p-3">
+                <input
+                  readOnly
+                  value={authLaunchUrl}
+                  className="w-full bg-transparent font-mono text-xs text-[var(--text-primary)] outline-none"
+                />
+              </div>
+              <div className="mt-3 flex gap-2">
+                <Button
+                  variant="ghost"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(authLaunchUrl);
+                      showToast(t("toastOAuthCopied"), "success");
+                    } catch {
+                      showToast(t("toastOAuthCopyFailed"), "error");
+                    }
+                  }}
+                >
+                  {t("oauthCopyUrlButton")}
+                </Button>
+                {!incognitoBrowserEnabled && (
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      const popupOpened = openAuthPopup(authLaunchUrl);
+                      if (!popupOpened) {
+                        showToast(t("errorOAuthPopupBlocked"), "error");
+                      }
+                    }}
+                  >
+                    {t("oauthOpenAgainButton")}
+                  </Button>
+                )}
+              </div>
             </div>
           )}
 
@@ -856,12 +974,12 @@ export function OAuthSection({
             oauthModalStatus === MODAL_STATUS.ERROR) &&
             selectedOAuthProviderRequiresCallback && (
             <div className="space-y-4">
-              <div className="rounded-xl border-l-4 border-purple-400/60 bg-white/10 p-4 text-sm backdrop-blur-xl">
-                <div className="font-medium text-white">
+              <div className="rounded-xl border-l-4 border-[var(--surface-border)] bg-[var(--surface-hover)] p-4 text-sm">
+                <div className="font-medium text-[var(--text-primary)]">
                   Step-by-step
                 </div>
-                <ol className="mt-3 list-decimal space-y-2 pl-4 text-white/90">
-                  <li>Log in and authorize in the popup window.</li>
+                <ol className="mt-3 list-decimal space-y-2 pl-4 text-[var(--text-primary)]">
+                  <li>{incognitoBrowserEnabled ? "Open the authorization URL above in a private/incognito window and sign in there." : "Log in and authorize in the popup window."}</li>
                   <li>
                     After authorizing, the page will fail to load (this is
                     expected).
@@ -870,12 +988,12 @@ export function OAuthSection({
                     Our server runs remotely, so the OAuth redirect can&apos;t reach
                     it directly. Copy the FULL URL from the address bar.
                   </li>
-                  <li>Paste the URL below and submit.</li>
+                  <li>{t("oauthStep4")}</li>
                 </ol>
               </div>
 
               <div>
-                <div className="mb-2 text-xs font-medium text-white/90">
+                <div className="mb-2 text-xs font-medium text-[var(--text-primary)]">
                   Paste callback URL
                 </div>
                 <Input
@@ -893,10 +1011,10 @@ export function OAuthSection({
                 <div
                   className={`mt-2 rounded-xl border-l-4 p-2 text-xs ${
                     callbackValidation === CALLBACK_VALIDATION.VALID
-                      ? "border-green-400/60 bg-green-500/20 text-white backdrop-blur-xl"
+                      ? "border-green-300 bg-green-500/10 text-green-700"
                       : callbackValidation === CALLBACK_VALIDATION.INVALID
-                        ? "border-red-400/60 bg-red-500/20 text-white backdrop-blur-xl"
-                        : "border-white/30 bg-white/5 text-white/70 backdrop-blur-xl"
+                        ? "border-red-300 bg-red-500/10 text-red-700"
+                        : "border-[var(--surface-border)] bg-[var(--surface-muted)] text-[var(--text-secondary)]"
                   }`}
                 >
                   {callbackMessage}
@@ -909,24 +1027,24 @@ export function OAuthSection({
             oauthModalStatus === MODAL_STATUS.POLLING ||
             oauthModalStatus === MODAL_STATUS.ERROR) &&
             !selectedOAuthProviderRequiresCallback && (
-            <div className="rounded-xl border-l-4 border-purple-400/60 bg-white/10 p-4 text-sm backdrop-blur-xl">
-              <div className="font-medium text-white">
+            <div className="rounded-xl border-l-4 border-[var(--surface-border)] bg-[var(--surface-hover)] p-4 text-sm">
+              <div className="font-medium text-[var(--text-primary)]">
                 Device Authorization
               </div>
-              <ol className="mt-3 list-decimal space-y-2 pl-4 text-white/90">
-                <li>A browser window has opened with the authorization page.</li>
+              <ol className="mt-3 list-decimal space-y-2 pl-4 text-[var(--text-primary)]">
+                <li>{incognitoBrowserEnabled ? "Open the authorization URL above in a private/incognito window." : "A browser window has opened with the authorization page."}</li>
                 <li>Log in and approve the access request.</li>
-                <li>Once approved, this dialog will update automatically.</li>
+                <li>{t("oauthDeviceStep3")}</li>
               </ol>
               {deviceCodeInfo && (
                 <div className="mt-4 space-y-3">
-                  <div className="rounded-lg bg-slate-800/60 p-3">
-                    <p className="text-xs font-medium text-slate-400">Your authorization code:</p>
-                    <p className="mt-1 select-all font-mono text-lg font-bold tracking-wider text-white">{deviceCodeInfo.userCode}</p>
+                  <div className="rounded-lg bg-[var(--surface-muted)] p-3">
+                    <p className="text-xs font-medium text-[var(--text-muted)]">{t("oauthYourAuthCode")}</p>
+                    <p className="mt-1 select-all font-mono text-lg font-bold tracking-wider text-[var(--text-primary)]">{deviceCodeInfo.userCode}</p>
                   </div>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-[var(--text-muted)]">
                     Enter this code at{" "}
-                    <a href={deviceCodeInfo.verificationUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 underline">
+                    <a href={deviceCodeInfo.verificationUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
                       {deviceCodeInfo.verificationUrl}
                     </a>
                   </p>
@@ -936,28 +1054,28 @@ export function OAuthSection({
           )}
 
           {oauthModalStatus === MODAL_STATUS.POLLING && (
-            <div className="mt-4 rounded-xl border-l-4 border-blue-400/60 bg-blue-500/20 p-4 text-sm text-white backdrop-blur-xl">
+            <div className="mt-4 rounded-xl border-l-4 border-blue-300 bg-blue-500/10 p-4 text-sm text-blue-700">
               {selectedOAuthProviderRequiresCallback
-                ? "Callback submitted. Waiting for CLIProxyAPI to finish token exchange..."
-                : "Waiting for CLIProxyAPI to finish OAuth authorization..."}
+                ? t("oauthPollingCallbackMsg")
+                : t("oauthPollingNoCallbackMsg")}
             </div>
           )}
 
           {oauthModalStatus === MODAL_STATUS.SUCCESS && (
-            <div className="rounded-xl border-l-4 border-green-400/60 bg-green-500/20 p-4 text-sm text-white backdrop-blur-xl">
+            <div className="rounded-xl border-l-4 border-green-300 bg-green-500/10 p-4 text-sm text-green-700">
               OAuth account connected successfully.
             </div>
           )}
 
           {oauthModalStatus === MODAL_STATUS.ERROR && oauthErrorMessage && (
-            <div className="rounded-xl border-l-4 border-red-400/60 bg-red-500/20 p-4 text-sm text-white backdrop-blur-xl">
+            <div className="rounded-xl border-l-4 border-red-300 bg-red-500/10 p-4 text-sm text-red-700">
               {oauthErrorMessage}
             </div>
           )}
         </ModalContent>
         <ModalFooter>
           <Button variant="ghost" onClick={handleOAuthModalClose}>
-            Close
+            {t("oauthCloseButton")}
           </Button>
           {oauthModalStatus !== MODAL_STATUS.SUCCESS && selectedOAuthProviderRequiresCallback && (
             <Button
@@ -966,15 +1084,15 @@ export function OAuthSection({
               disabled={isOAuthSubmitDisabled}
             >
               {oauthModalStatus === MODAL_STATUS.SUBMITTING
-                ? "Submitting..."
+                ? t("oauthSubmittingButton")
                 : oauthModalStatus === MODAL_STATUS.POLLING
-                  ? "Waiting..."
-                  : "Submit URL"}
+                  ? t("oauthWaitingButton")
+                  : t("oauthSubmitUrlButton")}
             </Button>
           )}
           {oauthModalStatus === MODAL_STATUS.SUCCESS && (
             <Button variant="secondary" onClick={handleOAuthModalClose}>
-              Done
+              {t("oauthDoneButton")}
             </Button>
           )}
         </ModalFooter>
@@ -987,10 +1105,10 @@ export function OAuthSection({
           setPendingOAuthDelete(null);
         }}
         onConfirm={handleOAuthDelete}
-        title="Remove OAuth Account"
-        message={`Remove OAuth account ${pendingOAuthDelete?.accountName}?`}
-        confirmLabel="Remove"
-        cancelLabel="Cancel"
+        title={t("oauthDeleteConfirmTitle")}
+        message={t("oauthDeleteConfirmMessage", { name: pendingOAuthDelete?.accountName ?? "" })}
+        confirmLabel={t("oauthDeleteConfirmButton")}
+        cancelLabel={t("oauthDeleteCancelButton")}
         variant="danger"
       />
 

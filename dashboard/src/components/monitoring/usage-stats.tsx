@@ -1,7 +1,8 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
-import { ChartContainer, CHART_COLORS, SERIES_PALETTE, TOOLTIP_STYLE, AXIS_TICK_STYLE, formatCompact } from "@/components/ui/chart-theme";
+import { ChartContainer, CHART_COLORS, SERIES_PALETTE, useChartTheme, formatCompact } from "@/components/ui/chart-theme";
 
 interface UsageResponse {
   usage: {
@@ -26,7 +27,9 @@ interface UsageStatsProps {
 }
 
 export function UsageStats({ usage }: UsageStatsProps) {
-  const modelStats = usage?.usage.apis
+   const t = useTranslations('monitoring');
+   const { axisTickStyle, tooltipStyle, tokens } = useChartTheme();
+   const modelStats = usage?.usage.apis
     ? Object.entries(usage.usage.apis).flatMap(([, data]) =>
         data.models
           ? Object.entries(data.models).map(([model, stats]) => ({
@@ -46,62 +49,62 @@ export function UsageStats({ usage }: UsageStatsProps) {
     : [];
 
   return (
-    <section className="rounded-md border border-slate-700/70 bg-slate-900/25 p-4">
-      <h2 className="mb-3 text-sm font-semibold text-slate-100">Usage Statistics</h2>
+    <section className="rounded-md border border-[var(--surface-border)] bg-[var(--surface-base)] p-4">
+      <h2 className="mb-3 text-sm font-semibold text-[var(--text-primary)]">{t('usageStatsTitle')}</h2>
          {usage ? (
            <div className="space-y-4">
             <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-2">
-              <div className="rounded-md border border-slate-700/70 bg-slate-900/30 px-2.5 py-2">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">Total Requests</p>
-                <p className="mt-0.5 text-xs font-semibold text-slate-100">
+              <div className="rounded-md border border-[var(--surface-border)] bg-[var(--surface-base)] px-2.5 py-2">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">{t('totalRequests')}</p>
+                <p className="mt-0.5 text-xs font-semibold text-[var(--text-primary)]">
                   {(usage.usage?.total_requests ?? 0).toLocaleString()}
                 </p>
               </div>
-              <div className="rounded-md border border-slate-700/70 bg-slate-900/30 px-2.5 py-2">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">Success</p>
-                <p className="mt-0.5 text-xs font-semibold text-emerald-300">
+              <div className="rounded-md border border-[var(--surface-border)] bg-[var(--surface-base)] px-2.5 py-2">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">{t('successLabel')}</p>
+                <p className="mt-0.5 text-xs font-semibold text-emerald-700">
                   {(usage.usage?.success_count ?? 0).toLocaleString()}
                 </p>
               </div>
-              <div className="rounded-md border border-slate-700/70 bg-slate-900/30 px-2.5 py-2">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">Failed</p>
-                <p className="mt-0.5 text-xs font-semibold text-rose-300">
+              <div className="rounded-md border border-[var(--surface-border)] bg-[var(--surface-base)] px-2.5 py-2">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">{t('failedLabel')}</p>
+                <p className="mt-0.5 text-xs font-semibold text-rose-600">
                   {(usage.usage?.failure_count ?? 0).toLocaleString()}
                 </p>
               </div>
-              <div className="rounded-md border border-slate-700/70 bg-slate-900/30 px-2.5 py-2">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">Total Tokens</p>
-                <p className="mt-0.5 text-xs font-semibold text-slate-100">
+              <div className="rounded-md border border-[var(--surface-border)] bg-[var(--surface-base)] px-2.5 py-2">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">{t('totalTokens')}</p>
+                <p className="mt-0.5 text-xs font-semibold text-[var(--text-primary)]">
                 {(usage.usage?.total_tokens ?? 0).toLocaleString()}
                 </p>
               </div>
             </div>
 
             {modelStats.length > 0 ? (
-              <ChartContainer title="Requests by Model">
+              <ChartContainer title={t('requestsByModel')}>
                 <ResponsiveContainer width="100%" height={200} minWidth={0} minHeight={0} initialDimension={{ width: 320, height: 200 }}>
                   <BarChart
                     layout="vertical"
                     data={modelStats}
                     margin={{ top: 0, right: 8, left: 4, bottom: 0 }}
                   >
-                    <CartesianGrid horizontal={false} stroke={CHART_COLORS.grid} />
-                    <YAxis
-                      type="category"
-                      dataKey="model"
-                      tick={AXIS_TICK_STYLE}
-                      width={80}
-                      tickFormatter={(v) => v.length > 12 ? v.slice(0, 12) + "\u2026" : v}
-                    />
-                    <XAxis
-                      type="number"
-                      tick={AXIS_TICK_STYLE}
-                      tickFormatter={formatCompact}
-                    />
-                    <Tooltip
-                      {...TOOLTIP_STYLE}
-                      formatter={(value) => [formatCompact(value as number), "Requests"]}
-                    />
+                     <CartesianGrid horizontal={false} stroke={tokens.grid} />
+                     <YAxis
+                       type="category"
+                       dataKey="model"
+                       tick={axisTickStyle}
+                       width={80}
+                       tickFormatter={(v) => v.length > 12 ? v.slice(0, 12) + "\u2026" : v}
+                     />
+                     <XAxis
+                       type="number"
+                       tick={axisTickStyle}
+                       tickFormatter={formatCompact}
+                     />
+                     <Tooltip
+                       {...tooltipStyle}
+                       formatter={(value) => [formatCompact(value as number), "Requests"]}
+                     />
                     <Bar dataKey="requests" radius={[0, 3, 3, 0]}>
                       {modelStats.map((_, i) => (
                         <Cell key={i} fill={SERIES_PALETTE[i % SERIES_PALETTE.length]} />
@@ -113,25 +116,25 @@ export function UsageStats({ usage }: UsageStatsProps) {
             ) : null}
 
             {hourlyData.length > 0 ? (
-              <ChartContainer title="Requests by Hour">
+              <ChartContainer title={t('requestsByHour')}>
                 <ResponsiveContainer width="100%" height={200} minWidth={0} minHeight={0} initialDimension={{ width: 320, height: 200 }}>
                   <BarChart
                     data={hourlyData}
                     margin={{ top: 0, right: 8, left: 4, bottom: 0 }}
                   >
-                    <CartesianGrid vertical={false} stroke={CHART_COLORS.grid} />
-                    <XAxis
-                      dataKey="hour"
-                      tick={AXIS_TICK_STYLE}
-                    />
-                    <YAxis
-                      tick={AXIS_TICK_STYLE}
-                      tickFormatter={formatCompact}
-                    />
-                    <Tooltip
-                      {...TOOLTIP_STYLE}
-                      formatter={(value) => [formatCompact(value as number), "Requests"]}
-                    />
+                     <CartesianGrid vertical={false} stroke={tokens.grid} />
+                     <XAxis
+                       dataKey="hour"
+                       tick={axisTickStyle}
+                     />
+                     <YAxis
+                       tick={axisTickStyle}
+                       tickFormatter={formatCompact}
+                     />
+                     <Tooltip
+                       {...tooltipStyle}
+                       formatter={(value) => [formatCompact(value as number), "Requests"]}
+                     />
                     <Bar dataKey="count" fill={CHART_COLORS.primary} radius={[3, 3, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -139,7 +142,7 @@ export function UsageStats({ usage }: UsageStatsProps) {
             ) : null}
           </div>
         ) : (
-          <div className="text-sm text-slate-400">Loading usage statistics...</div>
+          <div className="text-sm text-[var(--text-muted)]">{t('loadingUsageStats')}</div>
         )}
     </section>
   );

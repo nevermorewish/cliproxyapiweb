@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { PluginSection } from "@/components/opencode/plugin-section";
@@ -45,12 +46,12 @@ function downloadFile(content: string, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-const PLUGIN_OH_MY_OPENCODE = "oh-my-opencode@latest";
+const PLUGIN_OH_MY_OPENAGENT = "oh-my-openagent@latest";
 const PLUGIN_OH_MY_OPENCODE_SLIM = "oh-my-opencode-slim@latest";
 
 const DEFAULT_PLUGINS = [
   "opencode-cliproxyapi-sync@latest",
-  PLUGIN_OH_MY_OPENCODE,
+  PLUGIN_OH_MY_OPENAGENT,
 ];
 
 export function OpenCodeConfigGenerator(props: OpenCodeConfigGeneratorProps) {
@@ -67,10 +68,12 @@ export function OpenCodeConfigGenerator(props: OpenCodeConfigGeneratorProps) {
   const [mcpUrl, setMcpUrl] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [defaultModel, setDefaultModel] = useState("");
   const [envRows, setEnvRows] = useState<Array<{ id: number; key: string; value: string }>>([]);
   const envIdCounter = useRef(0);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingDataRef = useRef<{ mcps: McpEntry[]; plugins: string[] } | null>(null);
+  const pendingDataRef = useRef<{ mcps: McpEntry[]; plugins: string[]; defaultModel: string } | null>(null);
+  const t = useTranslations("openCodeConfig");
 
   useEffect(() => {
     async function loadConfig() {
@@ -98,18 +101,21 @@ export function OpenCodeConfigGenerator(props: OpenCodeConfigGeneratorProps) {
           setPlugins(DEFAULT_PLUGINS);
           onVariantChange?.("normal");
         }
+        if (typeof data.defaultModel === "string") {
+          setDefaultModel(data.defaultModel);
+        }
       } catch {
       } finally {
         setIsLoading(false);
       }
     }
     loadConfig();
-  }, []);
+  }, [onVariantChange]);
 
   useEffect(() => {
     if (isLoading) return;
 
-    pendingDataRef.current = { mcps, plugins };
+    pendingDataRef.current = { mcps, plugins, defaultModel };
 
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
@@ -125,14 +131,15 @@ export function OpenCodeConfigGenerator(props: OpenCodeConfigGeneratorProps) {
           body: JSON.stringify({
             mcpServers: mcps,
             customPlugins: plugins,
+            defaultModel,
           }),
         });
         if (!response.ok) {
           const errorData = await response.json();
-          setSaveError(extractApiError(errorData, "Failed to save config"));
+          setSaveError(extractApiError(errorData, t("errorSaveConfigFailed")));
         }
       } catch {
-        setSaveError("Network error while saving config");
+        setSaveError(t("networkError"));
       }
     }, 300);
 
@@ -141,16 +148,16 @@ export function OpenCodeConfigGenerator(props: OpenCodeConfigGeneratorProps) {
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [mcps, plugins, isLoading]);
+  }, [mcps, plugins, defaultModel, isLoading]);
 
   useEffect(() => {
     return () => {
       if (pendingDataRef.current) {
-        const { mcps: m, plugins: p } = pendingDataRef.current;
+        const { mcps: m, plugins: p, defaultModel: d } = pendingDataRef.current;
         fetch(API_ENDPOINTS.USER.CONFIG, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ mcpServers: m, customPlugins: p }),
+          body: JSON.stringify({ mcpServers: m, customPlugins: p, defaultModel: d }),
           keepalive: true,
         }).catch(() => {});
       }
@@ -182,15 +189,25 @@ export function OpenCodeConfigGenerator(props: OpenCodeConfigGeneratorProps) {
     ? apiKeys[selectedKeyIndex] ?? apiKeys[0]
     : null;
   const activeKey = selectedEntry?.key ?? "your-api-key-from-dashboard";
+  const availableModelOptions = Object.keys(availableModels).map((modelId) => ({
+    id: modelId,
+    value: `cliproxyapi/${modelId}`,
+    label: availableModels[modelId]?.name ?? modelId,
+  }));
+  const fallbackModel = availableModelOptions[0]?.value ?? "cliproxyapi/gemini-2.5-flash";
+  const hasCustomDefaultModel = Boolean(defaultModel.trim())
+    && !availableModelOptions.some((option) => option.value === defaultModel.trim());
+  const resolvedDefaultModel = defaultModel.trim() || fallbackModel;
 
    const configJson = generateConfigJson(activeKey, availableModels, proxyUrl, {
-     plugins,
-     mcps,
-   });
+      plugins,
+      mcps,
+      defaultModel: resolvedDefaultModel,
+    });
 
   const handleOmoVariantChange = (variant: OmoVariant) => {
-    const removePlugin = variant === "slim" ? PLUGIN_OH_MY_OPENCODE : PLUGIN_OH_MY_OPENCODE_SLIM;
-    const addPlugin = variant === "slim" ? PLUGIN_OH_MY_OPENCODE_SLIM : PLUGIN_OH_MY_OPENCODE;
+    const removePlugin = variant === "slim" ? PLUGIN_OH_MY_OPENAGENT : PLUGIN_OH_MY_OPENCODE_SLIM;
+    const addPlugin = variant === "slim" ? PLUGIN_OH_MY_OPENCODE_SLIM : PLUGIN_OH_MY_OPENAGENT;
     const filtered = plugins.filter((p) => p !== removePlugin && p !== addPlugin);
     const insertIdx = Math.min(1, filtered.length);
     const newPlugins = [...filtered.slice(0, insertIdx), addPlugin, ...filtered.slice(insertIdx)];
@@ -285,17 +302,16 @@ export function OpenCodeConfigGenerator(props: OpenCodeConfigGeneratorProps) {
   if (!hasAnyProviderConfigured) {
     return (
       <div className="space-y-4">
-        <div className="border-l-4 border-amber-400/60 bg-amber-500/10 backdrop-blur-xl p-4 text-sm rounded-r-xl">
-          <p className="text-white/90 font-medium mb-1">No providers configured</p>
-          <p className="text-white/60 text-xs">
-            You need to configure at least one AI provider before generating an OpenCode config.
-            Head to the{" "}
-            <Link href="/dashboard/providers" className="text-violet-400 font-medium hover:text-violet-300 underline underline-offset-2 decoration-violet-400/30">
-              Providers
+        <div className="border-l-4 border-amber-300 bg-amber-500/10 p-4 text-sm rounded-r-xl">
+          <p className="text-[var(--text-primary)] font-medium mb-1">{t("noProvidersTitle")}</p>
+          <p className="text-[var(--text-muted)] text-xs">
+            {t("noProvidersDesc")}{" "}
+            <Link href="/dashboard/providers" className="text-[var(--text-secondary)] font-medium hover:text-[var(--text-primary)] underline underline-offset-2 decoration-[#ccc]">
+              {t("noProvidersLink")}
             </Link>{" "}
-            page to add Gemini, Claude, Codex, or OpenAI Compatible keys, or set up{" "}
-            <Link href="/dashboard/providers" className="text-violet-400 font-medium hover:text-violet-300 underline underline-offset-2 decoration-violet-400/30">
-              Providers
+            {t("noProvidersDescMid")}{" "}
+            <Link href="/dashboard/providers" className="text-[var(--text-secondary)] font-medium hover:text-[var(--text-primary)] underline underline-offset-2 decoration-[#ccc]">
+              {t("noProvidersLink")}
             </Link>.
           </p>
         </div>
@@ -306,16 +322,16 @@ export function OpenCodeConfigGenerator(props: OpenCodeConfigGeneratorProps) {
   if (apiKeys.length === 0) {
     return (
       <div className="space-y-3">
-        <div className="border-l-4 border-amber-400/60 backdrop-blur-xl bg-amber-500/10 p-4 rounded-r-xl">
-          <div className="text-sm font-medium text-white mb-1">API Key Required</div>
-          <p className="text-sm text-white/70">
-            Create an API key to generate your configuration.
+        <div className="border-l-4 border-amber-300 bg-amber-500/10 p-4 rounded-r-xl">
+          <div className="text-sm font-medium text-[var(--text-primary)] mb-1">{t("apiKeyRequiredTitle")}</div>
+          <p className="text-sm text-[var(--text-secondary)]">
+            {t("apiKeyRequiredDesc")}
           </p>
           <Link
             href="/dashboard/api-keys"
-            className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-violet-500/20 border border-violet-400/30 text-violet-300 text-sm font-medium hover:bg-violet-500/30 transition-colors"
+            className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--surface-muted)] border border-[var(--surface-border)] text-[var(--text-primary)] text-sm font-medium hover:bg-[var(--surface-hover)] transition-colors"
           >
-            Create API Key &rarr;
+            {t("createApiKeyLink")}
           </Link>
         </div>
       </div>
@@ -325,15 +341,14 @@ export function OpenCodeConfigGenerator(props: OpenCodeConfigGeneratorProps) {
   if (!hasModels) {
     return (
       <div className="space-y-4">
-        <div className="border-l-4 border-amber-400/60 bg-amber-500/10 backdrop-blur-xl p-4 text-sm rounded-r-xl">
-          <p className="text-white/90 font-medium mb-1">No models available yet</p>
-          <p className="text-white/60 text-xs">
-            Providers are configured, but no models were discovered yet. If you just added providers,
-            wait a moment and refresh. If the issue persists, verify provider credentials on the{" "}
-            <Link href="/dashboard/providers" className="text-violet-400 font-medium hover:text-violet-300 underline underline-offset-2 decoration-violet-400/30">
-              Providers
+        <div className="border-l-4 border-amber-300 bg-amber-500/10 p-4 text-sm rounded-r-xl">
+          <p className="text-[var(--text-primary)] font-medium mb-1">{t("noModelsTitle")}</p>
+          <p className="text-[var(--text-muted)] text-xs">
+            {t("noModelsDesc")}{" "}
+            <Link href="/dashboard/providers" className="text-[var(--text-secondary)] font-medium hover:text-[var(--text-primary)] underline underline-offset-2 decoration-[#ccc]">
+              {t("noModelsLink")}
             </Link>{" "}
-            page.
+            {t("noModelsDescSuffix")}
           </p>
         </div>
       </div>
@@ -344,8 +359,8 @@ export function OpenCodeConfigGenerator(props: OpenCodeConfigGeneratorProps) {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-center gap-3 py-8">
-          <div className="h-5 w-5 rounded-full border-2 border-white/20 border-t-purple-400 animate-spin" />
-          <span className="text-sm text-white/60">Loading configuration...</span>
+          <div className="h-5 w-5 rounded-full border-2 border-[var(--surface-border)] border-t-black animate-spin" />
+          <span className="text-sm text-[var(--text-muted)]">{t("loadingConfig")}</span>
         </div>
       </div>
     );
@@ -354,88 +369,117 @@ export function OpenCodeConfigGenerator(props: OpenCodeConfigGeneratorProps) {
   return (
     <div className="space-y-4">
       {saveError && (
-        <div className="border-l-4 border-red-400/60 bg-red-500/10 backdrop-blur-xl p-3 text-sm rounded-r-xl">
-          <p className="text-red-300 text-xs">{saveError}</p>
+        <div className="border-l-4 border-red-300 bg-red-500/10 p-3 text-sm rounded-r-xl">
+          <p className="text-red-600 text-xs">{saveError}</p>
         </div>
       )}
       {hasKeys ? (
         apiKeys.length > 1 ? (
           <div className="space-y-2">
-            <label htmlFor="api-key-select" className="text-xs font-medium text-white/50 uppercase tracking-wider">
-              Select API Key
+            <label htmlFor="api-key-select" className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">
+              {t("selectApiKeyLabel")}
             </label>
             <select
               id="api-key-select"
               value={selectedKeyIndex}
               onChange={(e) => setSelectedKeyIndex(Number(e.target.value))}
-              className="w-full backdrop-blur-xl bg-white/8 border border-white/15 rounded-lg px-4 py-2.5 text-sm text-white/90 font-mono focus:border-purple-400/50 focus:bg-white/12 focus:outline-none transition-all"
+              className="w-full bg-[var(--surface-muted)] border border-[var(--surface-border)] rounded-lg px-4 py-2.5 text-sm text-[var(--text-primary)] font-mono focus:border-[var(--accent)]/20 focus:bg-[var(--surface-base)] focus:outline-none transition-colors"
             >
               {apiKeys.map((apiKey, index) => (
-                <option key={apiKey.key} value={index} className="bg-[#1a1a2e] text-white">
-                  {apiKey.name || "Unnamed Key"}
+                <option key={apiKey.key} value={index} className="bg-[var(--surface-base)] text-[var(--text-primary)]">
+                  {apiKey.name || t("unnamedKey")}
                 </option>
               ))}
             </select>
           </div>
         ) : (
-          <div className="flex items-center gap-2 text-xs text-white/50">
+          <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
             <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400" />
             <span>
-              Using API key: <strong className="text-white/70">{apiKeys[0].name || "Unnamed Key"}</strong>
+              {t("usingApiKeyPrefix")} <strong className="text-[var(--text-secondary)]">{apiKeys[0].name || t("unnamedKey")}</strong>
             </span>
           </div>
         )
       ) : hasActiveOAuth ? (
-        <div className="flex items-center gap-2 text-xs text-white/50">
+        <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
           <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400" />
           <span>
-            OAuth providers connected — using placeholder key <code className="px-1.5 py-0.5 rounded bg-white/10 text-orange-300 font-mono">your-api-key-from-dashboard</code>
+            {t("oauthConnected")} <code className="px-1.5 py-0.5 rounded bg-[var(--surface-hover)] text-amber-700 font-mono">your-api-key-from-dashboard</code>
           </span>
         </div>
       ) : (
-        <div className="border-l-4 border-amber-400/60 bg-amber-500/10 backdrop-blur-xl p-4 text-sm rounded-r-xl">
-          <p className="text-white/90 font-medium mb-1">No API keys found</p>
-          <p className="text-white/60 text-xs">
-            Create an API key on the{" "}
-            <Link href="/dashboard/api-keys" className="text-violet-400 font-medium hover:text-violet-300 underline underline-offset-2 decoration-violet-400/30">
-              API Keys
+        <div className="border-l-4 border-amber-300 bg-amber-500/10 p-4 text-sm rounded-r-xl">
+          <p className="text-[var(--text-primary)] font-medium mb-1">{t("noApiKeysTitle")}</p>
+          <p className="text-[var(--text-muted)] text-xs">
+            {t("noApiKeysDesc")}{" "}
+            <Link href="/dashboard/api-keys" className="text-[var(--text-secondary)] font-medium hover:text-[var(--text-primary)] underline underline-offset-2 decoration-[#ccc]">
+              {t("noApiKeysApiKeysLink")}
             </Link>{" "}
-            page or connect an OAuth provider on the{" "}
-            <Link href="/dashboard/providers" className="text-violet-400 font-medium hover:text-violet-300 underline underline-offset-2 decoration-violet-400/30">
-              Providers
+            {t("noApiKeysDescMid")}{" "}
+            <Link href="/dashboard/providers" className="text-[var(--text-secondary)] font-medium hover:text-[var(--text-primary)] underline underline-offset-2 decoration-[#ccc]">
+              {t("noApiKeysProvidersLink")}
             </Link>{" "}
-            page. The config below uses a placeholder.
+            {t("noApiKeysDescSuffix")}
           </p>
         </div>
        )}
 
-       <div className="space-y-4 border-t border-white/10 pt-4">
-         <div className="space-y-2">
-           <p className="text-xs font-medium text-white/50 uppercase tracking-wider">Oh My OpenCode Variant <HelpTooltip content="Normal: 9 specialized agents with categories for fine-grained control. Slim: 6 agents, lower token usage, built-in fallback chains. Both use your proxy models." /></p>
+        <div className="space-y-4 border-t border-[var(--surface-border)] pt-4">
+          <div className="space-y-2">
+            <label htmlFor="default-model-select" className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">
+              {t("defaultModelLabel")} <HelpTooltip content={t("defaultModelTooltip")} />
+            </label>
+            <select
+              id="default-model-select"
+              value={hasCustomDefaultModel ? defaultModel.trim() : (defaultModel.trim() || "")}
+              onChange={(e) => setDefaultModel(e.target.value)}
+              className="w-full bg-[var(--surface-muted)] border border-[var(--surface-border)] rounded-lg px-4 py-2.5 text-sm text-[var(--text-primary)] font-mono focus:border-[var(--accent)]/20 focus:bg-[var(--surface-base)] focus:outline-none transition-all"
+            >
+              <option value="" className="bg-[var(--surface-base)] text-[var(--text-primary)]">
+                {t("autoFallback", { model: fallbackModel })}
+              </option>
+              {hasCustomDefaultModel ? (
+                <option value={defaultModel.trim()} className="bg-[var(--surface-base)] text-[var(--text-primary)]">
+                  {t("customSavedValue", { model: defaultModel.trim() })}
+                </option>
+              ) : null}
+              {availableModelOptions.map((option) => (
+                <option key={option.value} value={option.value} className="bg-[var(--surface-base)] text-[var(--text-primary)]">
+                  {option.label} ({option.value})
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-[var(--text-muted)]">
+              {t("defaultModelHint")} <span className="font-mono text-[var(--text-muted)]">{fallbackModel}</span>.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">{t("variantLabel")} <HelpTooltip content={t("variantTooltip")} /></p>
            <div className="flex gap-2">
              <button
                type="button"
                onClick={() => handleOmoVariantChange("normal")}
                className={`flex-1 rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
                  omoVariant === "normal"
-                   ? "border-fuchsia-400/50 bg-fuchsia-500/15 text-fuchsia-300"
-                   : "border-white/10 bg-white/5 text-white/50 hover:text-white/70 hover:border-white/20"
+                   ? "border-[var(--surface-border)] bg-[var(--surface-muted)] text-[var(--text-primary)]"
+                   : "border-[var(--surface-border)] bg-[var(--surface-muted)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--surface-border)]"
                }`}
              >
-               <div className="font-semibold">Oh My OpenCode</div>
-               <div className="mt-0.5 text-[10px] opacity-70">9 agents + categories</div>
+                <div className="font-semibold">{t("variantNormalTitle")}</div>
+               <div className="mt-0.5 text-[10px] opacity-70">{t("variantNormalSubtitle")}</div>
              </button>
              <button
                type="button"
                onClick={() => handleOmoVariantChange("slim")}
                className={`flex-1 rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
                  omoVariant === "slim"
-                   ? "border-teal-400/50 bg-teal-500/15 text-teal-300"
-                   : "border-white/10 bg-white/5 text-white/50 hover:text-white/70 hover:border-white/20"
+                   ? "border-[var(--surface-border)] bg-[var(--surface-muted)] text-[var(--text-primary)]"
+                   : "border-[var(--surface-border)] bg-[var(--surface-muted)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--surface-border)]"
                }`}
              >
-               <div className="font-semibold">Oh My OpenCode Slim</div>
-               <div className="mt-0.5 text-[10px] opacity-70">6 agents, less tokens</div>
+                <div className="font-semibold">{t("variantSlimTitle")}</div>
+               <div className="mt-0.5 text-[10px] opacity-70">{t("variantSlimSubtitle")}</div>
              </button>
            </div>
          </div>

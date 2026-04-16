@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifySession } from "@/lib/auth/session";
 import { validateOrigin } from "@/lib/auth/origin";
 import { prisma } from "@/lib/db";
+import { atomicMergeOverrides } from "@/lib/db/optimistic-merge";
 import {
   pickBestModel,
   AGENT_ROLES,
@@ -14,7 +15,7 @@ import type { OhMyOpenCodeFullConfig } from "@/lib/config-generators/oh-my-openc
 import { validateFullConfig } from "@/lib/config-generators/oh-my-opencode-types";
 import { z } from "zod";
 import { AgentConfigSchema } from "@/lib/validation/schemas";
-import { Errors, apiSuccess } from "@/lib/errors";
+import { Errors, apiSuccess, apiError, ERROR_CODE } from "@/lib/errors";
 
 async function fetchManagementJson(path: string) {
   try {
@@ -141,19 +142,22 @@ export async function PUT(request: NextRequest) {
 
     const validated = validateFullConfig(parsed.overrides);
 
-    const agentOverride = await prisma.agentModelOverride.upsert({
-      where: { userId: session.userId },
-      create: {
-        userId: session.userId,
-        overrides: JSON.parse(JSON.stringify(validated)),
-      },
-      update: {
-        overrides: JSON.parse(JSON.stringify(validated)),
-      },
-    });
+    // Use optimistic concurrency control to prevent race condition data loss
+    const result = await atomicMergeOverrides(
+      session.userId,
+      validated as unknown as Record<string, unknown>
+    );
+
+    if (!result.success) {
+      return apiError(
+        ERROR_CODE.RESOURCE_ALREADY_EXISTS,
+        "Config update conflict, please retry",
+        409
+      );
+    }
 
     return apiSuccess({
-      overrides: agentOverride.overrides as Record<string, unknown>,
+      overrides: result.overrides,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

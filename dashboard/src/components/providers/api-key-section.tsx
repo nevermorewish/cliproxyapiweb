@@ -7,6 +7,7 @@ import { Modal, ModalContent, ModalFooter, ModalHeader, ModalTitle } from "@/com
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { API_ENDPOINTS } from "@/lib/api-endpoints";
+import { useTranslations } from "next-intl";
 
 type ShowToast = ReturnType<typeof useToast>["showToast"];
 
@@ -71,25 +72,27 @@ export const API_KEY_PROVIDERS = PROVIDERS.filter(
 );
 
 export function OwnerBadge({ ownerUsername, isOwn }: OwnerBadgeProps) {
+  const t = useTranslations("providers");
+
   if (isOwn) {
     return (
-      <span className="inline-flex items-center rounded-sm border border-blue-400/50 bg-blue-500/10 px-2 py-0.5 text-[11px] font-medium text-blue-200">
-        You
+      <span className="inline-flex items-center rounded-sm border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 text-[11px] font-medium text-blue-700">
+        {t("ownerYou")}
       </span>
     );
   }
 
   if (ownerUsername) {
     return (
-      <span className="inline-flex items-center rounded-sm border border-slate-600/70 bg-slate-800/60 px-2 py-0.5 text-[11px] font-medium text-slate-300">
+      <span className="inline-flex items-center rounded-sm border border-[var(--surface-border)]/70 bg-[var(--surface-muted)] px-2 py-0.5 text-[11px] font-medium text-[var(--text-secondary)]">
         {ownerUsername}
       </span>
     );
   }
 
   return (
-    <span className="inline-flex items-center rounded-sm border border-slate-700/70 bg-slate-800/40 px-2 py-0.5 text-[11px] font-medium text-slate-400">
-      Team
+    <span className="inline-flex items-center rounded-sm border border-[var(--surface-border)] bg-[var(--surface-muted)] px-2 py-0.5 text-[11px] font-medium text-[var(--text-muted)]">
+      {t("ownerTeam")}
     </span>
   );
 }
@@ -109,6 +112,8 @@ export function ApiKeySection({
   maxKeysPerUser,
   refreshProviders,
 }: ApiKeySectionProps) {
+  const t = useTranslations("providers");
+
   const [modalProvider, setModalProvider] = useState<ProviderId | null>(null);
   const [apiKey, setApiKey] = useState("");
   const [saving, setSaving] = useState(false);
@@ -132,7 +137,7 @@ export function ApiKeySection({
   const handleAddKey = async () => {
     if (!modalProvider) return;
     if (!apiKey.trim()) {
-      showToast("API key is required", "error");
+      showToast(t("toastApiKeyRequired"), "error");
       return;
     }
 
@@ -151,9 +156,9 @@ export function ApiKeySection({
       const data = await res.json();
 
       if (!res.ok) {
-        const errorMessage = data.error?.message ?? data.error ?? "Failed to add provider key";
+        const errorMessage = data.error?.message ?? data.error ?? t("toastAddFailed");
         if (res.status === 409) {
-          showToast("This API key has already been contributed", "error");
+          showToast(t("toastAlreadyContributed"), "error");
         } else if (res.status === 403) {
           showToast(errorMessage, "error");
         } else {
@@ -163,11 +168,11 @@ export function ApiKeySection({
         return;
       }
 
-      showToast("Provider key added successfully", "success");
+      showToast(t("toastAddSuccess"), "success");
       closeModal();
       await refreshProviders();
     } catch {
-      showToast("Network error", "error");
+      showToast(t("toastNetworkError"), "error");
     } finally {
       setSaving(false);
     }
@@ -188,13 +193,13 @@ export function ApiKeySection({
       });
       if (!res.ok) {
         const data = await res.json();
-        showToast(data.error?.message ?? data.error ?? "Failed to delete provider key", "error");
+        showToast(data.error?.message ?? data.error ?? t("toastDeleteFailed"), "error");
         return;
       }
-      showToast("Provider key deleted", "success");
+      showToast(t("toastDeleteSuccess"), "success");
       await refreshProviders();
     } catch {
-      showToast("Network error", "error");
+      showToast(t("toastNetworkError"), "error");
     }
   };
 
@@ -204,24 +209,37 @@ export function ApiKeySection({
   }));
   const totalApiKeys = providerStats.reduce((sum, item) => sum + item.count, 0);
 
+  const providerNameKey: Record<string, string> = {
+    [PROVIDER_IDS.CLAUDE]: "claudeName",
+    [PROVIDER_IDS.GEMINI]: "geminiName",
+    [PROVIDER_IDS.CODEX]: "codexName",
+    [PROVIDER_IDS.OPENAI]: "openaiName",
+  };
+  const providerDescKey: Record<string, string> = {
+    [PROVIDER_IDS.CLAUDE]: "claudeDescription",
+    [PROVIDER_IDS.GEMINI]: "geminiDescription",
+    [PROVIDER_IDS.CODEX]: "codexDescription",
+    [PROVIDER_IDS.OPENAI]: "openaiDescription",
+  };
+
   return (
     <>
       <div id="provider-api-keys" className="space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-sm font-semibold text-slate-100">API Key Providers</h2>
-            <p className="text-xs text-slate-400">Direct provider access keys</p>
+            <h2 className="text-sm font-semibold text-[var(--text-primary)]">{t("sectionTitle")}</h2>
+            <p className="text-xs text-[var(--text-muted)]">{t("sectionDescription")}</p>
           </div>
-          <span className="text-xs font-medium text-slate-400">{totalApiKeys} keys total</span>
+          <span className="text-xs font-medium text-[var(--text-muted)]">{t("keysTotal", { count: totalApiKeys })}</span>
         </div>
 
         <div className="overflow-x-auto">
-          <div className="min-w-[600px] overflow-hidden rounded-md border border-slate-700/70 bg-slate-900/20">
-            <div className="grid grid-cols-[minmax(0,1.6fr)_96px_120px_128px] items-center border-b border-slate-700/70 bg-slate-900/60 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
-              <span>Provider</span>
-              <span>Status</span>
-              <span>Keys</span>
-              <span>Actions</span>
+          <div className="min-w-[600px] overflow-hidden rounded-md border border-[var(--surface-border)] bg-[var(--surface-base)]">
+            <div className="grid grid-cols-[minmax(0,1.6fr)_96px_120px_128px] items-center border-b border-[var(--surface-border)] bg-[var(--surface-base)]/60 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">
+              <span>{t("tableHeaderProvider")}</span>
+              <span>{t("tableHeaderStatus")}</span>
+              <span>{t("tableHeaderKeys")}</span>
+              <span>{t("tableHeaderActions")}</span>
             </div>
             {API_KEY_PROVIDERS.map((provider) => {
               const config = configs[provider.id];
@@ -230,17 +248,17 @@ export function ApiKeySection({
               const isConfigured = configuredCount > 0;
 
               return (
-                <div key={provider.id} className="border-b border-slate-700/70 last:border-b-0">
+                <div key={provider.id} className="border-b border-[var(--surface-border)] last:border-b-0">
                   <div className="grid grid-cols-[minmax(0,1.6fr)_96px_120px_128px] items-center gap-3 px-4 py-3">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-slate-100">{provider.name}</p>
-                      <p className="truncate text-xs text-slate-400">{provider.description}</p>
+                      <p className="truncate text-sm font-medium text-[var(--text-primary)]">{provider.name}</p>
+                      <p className="truncate text-xs text-[var(--text-muted)]">{provider.description}</p>
                     </div>
-                    <span className={`text-xs font-medium ${isConfigured ? "text-emerald-300" : "text-slate-400"}`}>
-                      {isConfigured ? "Active" : "Inactive"}
+                    <span className={`text-xs font-medium ${isConfigured ? "text-emerald-700" : "text-[var(--text-muted)]"}`}>
+                      {isConfigured ? t("statusActive") : t("statusInactive")}
                     </span>
-                    <span className="text-xs text-slate-300">
-                      {configuredCount} {configuredCount === 1 ? "key" : "keys"}
+                    <span className="text-xs text-[var(--text-secondary)]">
+                      {configuredCount} {configuredCount === 1 ? t("keySingular") : t("keyPlural")}
                     </span>
                     <div className="flex justify-end">
                       <Button
@@ -248,7 +266,7 @@ export function ApiKeySection({
                         className="px-2.5 py-1 text-xs"
                         disabled={!currentUser}
                       >
-                        Add Key
+                        {t("addKeyButton")}
                       </Button>
                     </div>
                   </div>
@@ -258,17 +276,17 @@ export function ApiKeySection({
                       {config.keys.map((keyInfo) => (
                         <div
                           key={keyInfo.keyHash}
-                          className="group flex items-center justify-between gap-3 border-t border-slate-700/50 px-1 py-1.5 first:border-t-0"
+                          className="group flex items-center justify-between gap-3 border-t border-[var(--surface-border)] px-1 py-1.5 first:border-t-0"
                         >
                           <div className="flex min-w-0 items-center gap-2">
-                            <span className="truncate font-mono text-xs text-slate-300">{keyInfo.maskedKey}</span>
+                              <span className="truncate font-mono text-xs text-[var(--text-secondary)]">{keyInfo.maskedKey}</span>
                             {currentUser && (
                               <OwnerBadge ownerUsername={keyInfo.ownerUsername} isOwn={keyInfo.isOwn} />
                             )}
                           </div>
                           <div className="flex items-center gap-3">
                             {currentUser && (
-                              <span className="text-[11px] text-slate-500">{userKeyCount}/{maxKeysPerUser}</span>
+                              <span className="text-[11px] text-[var(--text-muted)]">{userKeyCount}/{maxKeysPerUser}</span>
                             )}
                             {currentUser && (keyInfo.isOwn || currentUser.isAdmin) && (
                               <Button
@@ -276,7 +294,7 @@ export function ApiKeySection({
                                 className="px-2 py-1 text-[11px]"
                                 onClick={() => confirmDeleteKey(keyInfo.keyHash, provider.id)}
                               >
-                                Remove
+                                {t("removeButton")}
                               </Button>
                             )}
                           </div>
@@ -294,30 +312,34 @@ export function ApiKeySection({
       <Modal isOpen={modalProvider !== null} onClose={closeModal}>
         <ModalHeader>
           <ModalTitle>
-            {modalProvider && PROVIDERS.find((p) => p.id === modalProvider)?.name} - Add API Key
+            {modalProvider && t("addKeyModalTitle", { name: PROVIDERS.find((p) => p.id === modalProvider)?.name ?? "" })}
           </ModalTitle>
         </ModalHeader>
         <ModalContent>
           <div className="space-y-4">
             <div>
-              <label htmlFor="api-key" className="mb-2 block text-sm font-semibold text-white">
-                API Key <span className="text-red-400">*</span>
+              <label htmlFor="api-key" className="mb-2 block text-sm font-semibold text-[var(--text-primary)]">
+                API Key <span className="text-red-600">*</span>
               </label>
               <Input
                 type="password"
                 name="api-key"
                 value={apiKey}
                 onChange={setApiKey}
-                placeholder="sk-..."
+                placeholder={t("addKeyPlaceholder")}
                 required
                 disabled={saving}
               />
-              <p className="mt-1.5 text-xs text-white/50">Your API key will be stored securely and associated with your account</p>
+              <p className="mt-1.5 text-xs text-[var(--text-muted)]">{t("addKeyHint")}</p>
             </div>
             {currentUser && (
-              <div className="rounded-sm border-l-4 border-blue-400/60 bg-blue-500/10 p-3 text-sm">
-                <p className="text-white/90">
-                  <strong>Usage:</strong> You have contributed {currentUser ? configs[PROVIDER_IDS.CLAUDE].keys.filter((k) => k.isOwn).length + configs[PROVIDER_IDS.GEMINI].keys.filter((k) => k.isOwn).length + configs[PROVIDER_IDS.CODEX].keys.filter((k) => k.isOwn).length + configs[PROVIDER_IDS.OPENAI].keys.filter((k) => k.isOwn).length : 0} / {maxKeysPerUser} keys total
+              <div className="rounded-sm border-l-4 border-blue-300 bg-blue-500/10 p-3 text-sm">
+                <p className="text-[var(--text-primary)]">
+                  <strong>{t("usageLabel")}</strong>{" "}
+                  {t("usageContributed", {
+                    contributed: configs[PROVIDER_IDS.CLAUDE].keys.filter((k) => k.isOwn).length + configs[PROVIDER_IDS.GEMINI].keys.filter((k) => k.isOwn).length + configs[PROVIDER_IDS.CODEX].keys.filter((k) => k.isOwn).length + configs[PROVIDER_IDS.OPENAI].keys.filter((k) => k.isOwn).length,
+                    max: maxKeysPerUser
+                  })}
                 </p>
               </div>
             )}
@@ -325,10 +347,10 @@ export function ApiKeySection({
         </ModalContent>
         <ModalFooter>
           <Button variant="ghost" onClick={closeModal}>
-            Cancel
+            {t("cancelButton")}
           </Button>
           <Button onClick={handleAddKey} disabled={saving}>
-            {saving ? "Adding..." : "Add API Key"}
+            {saving ? t("addingButton") : t("addApiKeyButton")}
           </Button>
         </ModalFooter>
       </Modal>
@@ -340,10 +362,10 @@ export function ApiKeySection({
           setPendingKeyDelete(null);
         }}
         onConfirm={handleDeleteKey}
-        title="Remove API Key"
-        message="Are you sure you want to remove this key?"
-        confirmLabel="Remove"
-        cancelLabel="Cancel"
+        title={t("removeConfirmTitle")}
+        message={t("removeConfirmMessage")}
+        confirmLabel={t("removeConfirmButton")}
+        cancelLabel={t("removeConfirmCancelButton")}
         variant="danger"
       />
     </>

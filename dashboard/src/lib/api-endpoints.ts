@@ -16,6 +16,11 @@ export const API_ENDPOINTS = {
     LOGS: "/api/admin/logs",
     TELEGRAM: "/api/admin/telegram",
     REVOKE_SESSIONS: "/api/admin/revoke-sessions",
+    BACKUP: "/api/admin/backup",
+    BACKUP_SCHEDULE: "/api/admin/backup/schedule",
+    BACKUP_STORAGE: "/api/admin/backup/storage",
+    BACKUP_RESTORE: "/api/admin/backup/restore",
+    BACKUP_PREVIEW: "/api/admin/backup/preview",
   },
   UPDATE: {
     BASE: "/api/update",
@@ -29,6 +34,7 @@ export const API_ENDPOINTS = {
   },
   USAGE: {
     COLLECT: "/api/usage/collect",
+    COLLECTION_STATUS: "/api/usage/collection-status",
   },
   USER: {
     API_KEYS: "/api/user/api-keys",
@@ -82,10 +88,13 @@ export const API_ENDPOINTS = {
     // OAuth
     OAUTH_EXCLUDED_MODELS: "/api/management/oauth-excluded-models",
     OAUTH_MODEL_ALIAS: "/api/management/oauth-model-alias",
+    OAUTH_QUOTA_GROUPS: "/api/management/oauth-quota-groups",
 
     // Auth files
     AUTH_FILES: "/api/management/auth-files",
-    AUTH_FILES_FIELDS: "/api/management/auth-files/fields",
+    AUTH_FILE_QUOTA_GROUPS: "/api/management/auth-files/quota-groups",
+    AUTH_FILE_QUOTA_GROUPS_MANUAL: "/api/management/auth-files/quota-groups/manual",
+    AUTH_FILE_QUOTA_GROUPS_AUTO_CLEAR: "/api/management/auth-files/quota-groups/auto/clear",
 
     // Providers
     OPENAI_COMPATIBILITY: "/api/management/openai-compatibility",
@@ -102,6 +111,7 @@ export const API_ENDPOINTS = {
   },
   PROXY: {
     STATUS: "/api/proxy/status",
+    OAUTH_SETTINGS: "/api/proxy/oauth-settings",
   },
   CONFIG_SYNC: {
     TOKENS: "/api/config-sync/tokens",
@@ -113,6 +123,7 @@ export const API_ENDPOINTS = {
   MODEL_PREFERENCES: "/api/model-preferences",
   AGENT_CONFIG: "/api/agent-config",
   AGENT_CONFIG_SLIM: "/api/agent-config-slim",
+  OH_MY_OPENCODE_PRESETS: "/api/oh-my-opencode/presets",
   CONTAINERS: {
     LIST: "/api/containers/list",
   },

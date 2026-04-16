@@ -37,6 +37,25 @@ const AgentConfigEntrySchema = z.object({
   temperature: z.number().min(0).max(2).optional(),
   prompt_append: z.string().optional(),
   fallback_models: z.array(z.string()).optional(),
+  permission: z.object({
+    edit: z.enum(["allow", "deny", "prompt"]).optional(),
+    bash: z.union([
+      z.enum(["allow", "deny", "prompt"]),
+      z.object({
+        git: z.enum(["allow", "deny", "prompt"]).optional(),
+        test: z.enum(["allow", "deny", "prompt"]).optional(),
+      }),
+    ]).optional(),
+  }).optional(),
+  thinking: z.object({
+    type: z.enum(["enabled", "disabled"]),
+    budgetTokens: z.number().min(0).optional(),
+  }).optional(),
+  ultrawork: z.object({
+    model: z.string().optional(),
+    variant: z.string().optional(),
+    temperature: z.number().min(0).max(2).optional(),
+  }).optional(),
 });
 
 const CategoryConfigEntrySchema = z.object({
@@ -76,6 +95,11 @@ const SisyphusAgentConfigSchema = z.object({
 const GitMasterConfigSchema = z.object({
   commit_footer: z.boolean().optional(),
   include_co_authored_by: z.boolean().optional(),
+});
+
+const ExperimentalConfigSchema = z.object({
+  aggressive_truncation: z.boolean().optional(),
+  task_system: z.boolean().optional(),
 });
 
 const LspEntrySchema = z.object({
@@ -118,6 +142,9 @@ export const AgentConfigOverridesSchema = z.object({
   mcpServers: z.array(McpEntrySchema).optional(),
   customPlugins: z.array(z.string()).optional(),
   configSchemaVersion: z.number().positive().optional(),
+   hashline_edit: z.boolean().optional(),
+   defaultModel: z.string().min(1).max(200).optional(),
+   experimental: ExperimentalConfigSchema.optional(),
 });
 
 export const AgentConfigSchema = z.object({
@@ -160,6 +187,38 @@ const SlimBackgroundSchema = z.object({
   maxConcurrentStarts: z.number().min(1).max(50).optional(),
 });
 
+const SlimCouncillorEntrySchema = z.object({
+  model: z.string(),
+  variant: z.string().optional(),
+  prompt: z.string().optional(),
+});
+
+const SlimCouncilPresetMasterOverrideSchema = z.object({
+  model: z.string().optional(),
+  variant: z.string().optional(),
+  prompt: z.string().optional(),
+});
+
+const SlimCouncilPresetSchema = z.object({
+  councillors: z.record(z.string(), SlimCouncillorEntrySchema),
+  master: SlimCouncilPresetMasterOverrideSchema.optional(),
+});
+
+const SlimCouncilSchema = z.object({
+  master: z.object({
+    model: z.string(),
+    variant: z.string().optional(),
+    prompt: z.string().optional(),
+  }).optional(),
+  presets: z.record(z.string(), SlimCouncilPresetSchema).optional(),
+  master_timeout: z.number().min(0).optional(),
+  councillors_timeout: z.number().min(0).optional(),
+  default_preset: z.string().optional(),
+  master_fallback: z.array(z.string()).optional(),
+  councillor_execution_mode: z.enum(["parallel", "serial"]).optional(),
+  councillor_retries: z.number().int().min(0).max(5).optional(),
+});
+
 const SlimConfigOverridesSchema = z.object({
   preset: z.string().optional(),
   setDefaultAgent: z.boolean().optional(),
@@ -171,6 +230,7 @@ const SlimConfigOverridesSchema = z.object({
   tmux: SlimTmuxSchema.optional(),
   background: SlimBackgroundSchema.optional(),
   fallback: SlimFallbackSchema.optional(),
+  council: SlimCouncilSchema.optional(),
 });
 
 export const SlimAgentConfigSchema = z.object({
@@ -314,3 +374,19 @@ export const ImportOAuthCredentialSchema = z.object({
 });
 
 export type ImportOAuthCredentialInput = z.infer<typeof ImportOAuthCredentialSchema>;
+
+// ============================================================================
+// BACKUP & RESTORE
+// ============================================================================
+
+// Note: Backup system uses dedicated types in lib/backup/types.ts
+// and its own API routes at /api/admin/backup/schedule - not the general settings API.
+// BackupScheduleSchema below is only used for basic input validation in the schedule API.
+
+export const BackupScheduleSchema = z.object({
+  enabled: z.boolean(),
+  cronExpr: z.string().min(9).max(100).optional(),
+  retention: z.number().min(1).max(365).optional(),
+});
+
+export type BackupScheduleInput = z.infer<typeof BackupScheduleSchema>;

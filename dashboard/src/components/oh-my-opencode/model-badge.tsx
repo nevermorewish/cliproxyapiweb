@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 
 import { groupModelsByProvider } from "@/lib/providers/model-grouping";
 
@@ -16,6 +17,12 @@ export function downloadFile(content: string, filename: string) {
   URL.revokeObjectURL(url);
 }
 
+export interface AgentUltraworkConfig {
+  model?: string;
+  variant?: string;
+  temperature?: number;
+}
+
 export interface ExtraFieldConfig {
   variant?: string;
   temperature?: number;
@@ -23,7 +30,16 @@ export interface ExtraFieldConfig {
   thirdFieldKey: string;
   thirdFieldPlaceholder: string;
   fallback_models?: string[];
+  supportsUltrawork?: boolean;
+  ultrawork?: AgentUltraworkConfig;
 }
+
+export type ModelBadgeFieldValue =
+  | string
+  | number
+  | string[]
+  | AgentUltraworkConfig
+  | undefined;
 
 export const TIER_META: Record<1 | 2 | 3 | 4, { label: string; hint: string }> = {
   1: { label: "Tier 1", hint: "Critical reasoning" },
@@ -41,7 +57,7 @@ interface ModelBadgeProps {
   modelSourceMap?: Map<string, string>;
   onSelect: (value: string | undefined) => void;
   extraFields?: ExtraFieldConfig;
-  onFieldChange?: (field: string, value: string | number | string[] | undefined) => void;
+  onFieldChange?: (field: string, value: ModelBadgeFieldValue) => void;
 }
 
 export function ModelBadge({
@@ -55,6 +71,7 @@ export function ModelBadge({
   extraFields,
   onFieldChange,
 }: ModelBadgeProps) {
+  const t = useTranslations('ohMyOpenCode');
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [openUp, setOpenUp] = useState(false);
@@ -63,8 +80,19 @@ export function ModelBadge({
   const btnRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const hasUltraworkValues = Boolean(
+    extraFields?.ultrawork &&
+      (extraFields.ultrawork.model ||
+        extraFields.ultrawork.variant ||
+        extraFields.ultrawork.temperature !== undefined)
+  );
   const hasExtraValues =
-    extraFields && (extraFields.variant || extraFields.temperature !== undefined || extraFields.thirdField || (extraFields.fallback_models && extraFields.fallback_models.length > 0));
+    extraFields &&
+    (extraFields.variant ||
+      extraFields.temperature !== undefined ||
+      extraFields.thirdField ||
+      (extraFields.fallback_models && extraFields.fallback_models.length > 0) ||
+      hasUltraworkValues);
 
   useEffect(() => {
     if (!open) return;
@@ -105,16 +133,16 @@ export function ModelBadge({
           ref={btnRef}
           type="button"
           onClick={handleOpen}
-          className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-l-lg text-xs font-mono cursor-pointer transition-all hover:bg-white/10 ${
+          className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-l-lg text-xs font-mono cursor-pointer transition-colors hover:bg-[var(--surface-hover)] ${
             isOverride
-              ? "bg-violet-500/10 border border-violet-400/20 text-white/80"
-              : "bg-white/5 border border-white/10 text-white/70"
+              ? "bg-[var(--surface-muted)] border border-[var(--surface-border)] text-[var(--text-secondary)]"
+              : "bg-[var(--surface-muted)] border border-[var(--surface-border)] text-[var(--text-secondary)]"
           }`}
         >
           {showName && (
             <>
-              <span className="text-pink-300">{name}</span>
-              <span className="text-white/30">&rarr;</span>
+              <span className="text-[var(--text-primary)]">{name}</span>
+              <span className="text-[var(--text-muted)]">&rarr;</span>
             </>
           )}
           <span>{model}</span>
@@ -127,12 +155,12 @@ export function ModelBadge({
               e.stopPropagation();
               setShowExtra(!showExtra);
             }}
-            className={`px-1.5 py-1 border border-l-0 rounded-r-lg text-[10px] transition-all cursor-pointer ${
+            className={`px-1.5 py-1 border border-l-0 rounded-r-lg text-[10px] transition-colors cursor-pointer ${
               showExtra || hasExtraValues
-                ? "bg-amber-500/10 border-amber-400/20 text-amber-300/80 hover:bg-amber-500/20"
-                : "bg-white/5 border-white/10 text-white/30 hover:text-white/60 hover:bg-white/10"
+                ? "bg-amber-500/10 border-amber-500/20 text-amber-700/80 hover:bg-amber-500/10"
+                : "bg-[var(--surface-muted)] border-[var(--surface-border)] text-[var(--text-muted)] hover:text-[var(--text-muted)] hover:bg-[var(--surface-hover)]"
             }`}
-            title="Configure variant, temperature, and more"
+            title={t('configureTooltip')}
           >
             <svg
               aria-hidden="true"
@@ -160,7 +188,7 @@ export function ModelBadge({
               placeholder="variant"
               value={extraFields?.variant ?? ""}
               onChange={(e) => onFieldChange("variant", e.target.value || undefined)}
-              className="w-16 px-1.5 py-0.5 text-[10px] bg-white/5 border border-white/10 rounded text-white/70 placeholder:text-white/20 focus:outline-none focus:border-violet-400/30"
+              className="w-16 px-1.5 py-0.5 text-[10px] bg-[var(--surface-muted)] border border-[var(--surface-border)] rounded text-[var(--text-secondary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-black/15"
             />
             <input
               type="number"
@@ -170,7 +198,7 @@ export function ModelBadge({
               max={2}
               value={extraFields?.temperature ?? ""}
               onChange={(e) => onFieldChange("temperature", e.target.value ? Number(e.target.value) : undefined)}
-              className="w-14 px-1.5 py-0.5 text-[10px] bg-white/5 border border-white/10 rounded text-white/70 placeholder:text-white/20 focus:outline-none focus:border-violet-400/30"
+              className="w-14 px-1.5 py-0.5 text-[10px] bg-[var(--surface-muted)] border border-[var(--surface-border)] rounded text-[var(--text-secondary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)]/15"
             />
             <input
               type="text"
@@ -180,16 +208,16 @@ export function ModelBadge({
                 const key = extraFields?.thirdFieldKey;
                 if (key) onFieldChange(key, e.target.value || undefined);
               }}
-              className="flex-1 min-w-0 w-24 px-1.5 py-0.5 text-[10px] bg-white/5 border border-white/10 rounded text-white/70 placeholder:text-white/20 focus:outline-none focus:border-violet-400/30"
+              className="flex-1 min-w-0 w-24 px-1.5 py-0.5 text-[10px] bg-[var(--surface-muted)] border border-[var(--surface-border)] rounded text-[var(--text-secondary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)]/15"
             />
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-white/35">Fallbacks</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">{t('fallbacksLabel')}</p>
             <div className="flex flex-wrap gap-1">
               {(extraFields?.fallback_models ?? []).map((fm) => (
                 <span
                   key={fm}
-                  className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-mono bg-white/5 border border-white/10 rounded text-white/60"
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-mono bg-[var(--surface-muted)] border border-[var(--surface-border)] rounded text-[var(--text-muted)]"
                 >
                   {fm}
                   <button
@@ -198,7 +226,7 @@ export function ModelBadge({
                       const updated = (extraFields?.fallback_models ?? []).filter((m) => m !== fm);
                       onFieldChange("fallback_models", updated.length > 0 ? updated : undefined);
                     }}
-                    className="text-white/30 hover:text-red-400/80 transition-colors cursor-pointer leading-none"
+                    className="text-[var(--text-muted)] hover:text-red-600/80 transition-colors cursor-pointer leading-none"
                     aria-label={`Remove fallback ${fm}`}
                   >
                     ×
@@ -216,34 +244,97 @@ export function ModelBadge({
                       if (!e.target.value) return;
                       onFieldChange("fallback_models", [...current, e.target.value]);
                     }}
-                    className="px-1.5 py-0.5 text-[10px] font-mono bg-white/5 border border-white/10 rounded text-white/50 focus:outline-none focus:border-violet-400/30 cursor-pointer"
+                    className="px-1.5 py-0.5 text-[10px] font-mono bg-[var(--surface-muted)] border border-[var(--surface-border)] rounded text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)]/15 cursor-pointer"
                   >
-                    <option value="" className="bg-gray-900">+ add fallback</option>
+                    <option value="" className="bg-[var(--surface-base)]">+ add fallback</option>
                     {choices.map((m) => (
-                      <option key={m} value={m} className="bg-gray-900">{m}</option>
+                      <option key={m} value={m} className="bg-[var(--surface-base)]">{m}</option>
                     ))}
                   </select>
                 );
               })()}
             </div>
           </div>
+          {extraFields?.supportsUltrawork && (
+                <div className="space-y-1 pt-1 border-t border-[var(--surface-border)]">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">{t('ultraworkLabel')}</p>
+                {hasUltraworkValues && (
+                  <button
+                    type="button"
+                    onClick={() => onFieldChange("ultrawork", undefined)}
+                    className="text-[10px] text-[var(--text-muted)] hover:text-red-600/80 transition-colors cursor-pointer"
+                  >
+                    clear
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5">
+                <select
+                  value={extraFields.ultrawork?.model ?? ""}
+                  onChange={(e) => {
+                    const value = e.target.value || undefined;
+                    onFieldChange("ultrawork", {
+                      ...extraFields?.ultrawork,
+                      model: value,
+                    });
+                  }}
+                  className="flex-1 min-w-0 px-1.5 py-0.5 text-[10px] font-mono bg-[var(--surface-muted)] border border-[var(--surface-border)] rounded text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent)]/15 cursor-pointer"
+                >
+                  <option value="" className="bg-[var(--surface-base)]">select model...</option>
+                  {availableModels.map((m) => (
+                    <option key={m} value={m} className="bg-[var(--surface-base)]">{m}</option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  placeholder="variant"
+                  value={extraFields.ultrawork?.variant ?? ""}
+                  onChange={(e) => {
+                    const value = e.target.value || undefined;
+                    onFieldChange("ultrawork", {
+                      ...extraFields?.ultrawork,
+                      variant: value,
+                    });
+                  }}
+              className="w-16 px-1.5 py-0.5 text-[10px] bg-[var(--surface-muted)] border border-[var(--surface-border)] rounded text-[var(--text-secondary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)]/15"
+                />
+                <input
+                  type="number"
+                  placeholder="temp"
+                  step={0.1}
+                  min={0}
+                  max={2}
+                  value={extraFields.ultrawork?.temperature ?? ""}
+                  onChange={(e) => {
+                    const value = e.target.value ? Number(e.target.value) : undefined;
+                    onFieldChange("ultrawork", {
+                      ...extraFields?.ultrawork,
+                      temperature: value,
+                    });
+                  }}
+                  className="w-14 px-1.5 py-0.5 text-[10px] bg-[var(--surface-muted)] border border-[var(--surface-border)] rounded text-[var(--text-secondary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)]/15"
+                />
+              </div>
+            </div>
+          )}
         </div>
       )}
 
       {open && (
         <div
-          className={`absolute z-[9999] w-72 max-h-64 overflow-hidden rounded-xl border border-white/15 bg-gray-900/95 backdrop-blur-xl shadow-2xl ${
+          className={`absolute z-[9999] w-72 max-h-64 overflow-hidden rounded-xl border border-[var(--surface-border)] bg-[var(--surface-base)] shadow-[rgba(0,0,0,0.06)_0px_0px_0px_1px,rgba(0,0,0,0.04)_0px_4px_8px] ${
             openUp ? "bottom-full mb-1" : "top-full mt-1"
           } left-0`}
         >
-          <div className="p-2 border-b border-white/10">
+          <div className="p-2 border-b border-[var(--surface-border)]">
             <input
               ref={inputRef}
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search models..."
-              className="w-full px-2.5 py-1.5 text-xs bg-white/5 border border-white/10 rounded-lg text-white placeholder:text-white/30 focus:outline-none focus:border-violet-400/40"
+              placeholder={t('searchModelsPlaceholder')}
+              className="w-full px-2.5 py-1.5 text-xs bg-[var(--surface-muted)] border border-[var(--surface-border)] rounded-lg text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)]/20"
             />
           </div>
           <div className="overflow-y-auto max-h-48">
@@ -254,15 +345,15 @@ export function ModelBadge({
                 setOpen(false);
                 setSearch("");
               }}
-              className={`w-full text-left px-3 py-1.5 text-xs font-mono transition-colors hover:bg-white/10 ${
-                !isOverride ? "text-violet-300 bg-violet-500/10" : "text-white/60"
+              className={`w-full text-left px-3 py-1.5 text-xs font-mono transition-colors hover:bg-[var(--surface-hover)] ${
+                !isOverride ? "text-[var(--text-secondary)] bg-[var(--surface-muted)]" : "text-[var(--text-muted)]"
               }`}
             >
               Auto (default)
             </button>
             {groupedFilteredModels.map((group) => (
               <div key={group.provider} className="border-t border-white/5 first:border-t-0">
-                <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/35">
+                <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">
                   {group.provider}
                 </div>
                 {group.models.map((providerModel) => (
@@ -274,10 +365,10 @@ export function ModelBadge({
                       setOpen(false);
                       setSearch("");
                     }}
-                    className={`flex w-full items-center gap-1.5 px-3 py-1.5 text-left text-xs font-mono transition-colors hover:bg-white/10 ${
+                    className={`flex w-full items-center gap-1.5 px-3 py-1.5 text-left text-xs font-mono transition-colors hover:bg-[var(--surface-hover)] ${
                       isOverride && model === providerModel
-                        ? "text-violet-300 bg-violet-500/10"
-                        : "text-white/70"
+                        ? "text-[var(--text-secondary)] bg-[var(--surface-muted)]"
+                        : "text-[var(--text-secondary)]"
                     }`}
                   >
                     <span className="flex-1">{providerModel}</span>
@@ -286,7 +377,7 @@ export function ModelBadge({
               </div>
             ))}
             {groupedFilteredModels.length === 0 && (
-              <div className="px-3 py-2 text-xs text-white/30">No models found</div>
+              <div className="px-3 py-2 text-xs text-[var(--text-muted)]">{t('noModelsFound')}</div>
             )}
           </div>
         </div>

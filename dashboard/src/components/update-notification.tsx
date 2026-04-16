@@ -6,6 +6,7 @@ import { Modal, ModalHeader, ModalTitle, ModalContent, ModalFooter } from "@/com
 import { Button } from "@/components/ui/button";
 import { useUpdateCheck } from "@/hooks/use-update-check";
 import { UpdateOverlay } from "@/components/update-overlay";
+import { useTranslations } from 'next-intl';
 
 export function UpdateNotification() {
   const {
@@ -18,6 +19,7 @@ export function UpdateNotification() {
     performUpdate,
   } = useUpdateCheck();
   const [selectedVersion, setSelectedVersion] = useState<string | null>(null);
+  const t = useTranslations('updateOverlay');
 
   const targetVersion = selectedVersion || updateInfo?.latestVersion || "latest";
 
@@ -38,10 +40,10 @@ export function UpdateNotification() {
           <ModalHeader>
             <ModalTitle>
               <span className="flex items-center gap-3">
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-500/20 border border-purple-500/30">
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--surface-muted)] border border-[var(--surface-border)]">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    className="h-5 w-5 text-purple-400"
+                    className="h-5 w-5 text-[var(--text-secondary)]"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -56,36 +58,36 @@ export function UpdateNotification() {
                     />
                   </svg>
                 </span>
-                Dashboard Update Available
+                {t('dashboardTitle')}
               </span>
             </ModalTitle>
           </ModalHeader>
 
           <ModalContent>
             <div className="space-y-4">
-              <p className="text-white/70 text-sm leading-relaxed">
-                A new version of the Dashboard is available. Would you like to update now?
+              <p className="text-[var(--text-secondary)] text-sm leading-relaxed">
+                {t('dashboardUpdateMessage')}
               </p>
 
               <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-xl bg-white/5 border border-white/10 p-3">
-                  <p className="text-[11px] uppercase tracking-wider text-white/40 mb-1">Current</p>
-                  <p className="text-white font-mono text-sm font-medium">
+                <div className="rounded-xl bg-[var(--surface-muted)] border border-[var(--surface-border)] p-3">
+                  <p className="text-[11px] uppercase tracking-wider text-[var(--text-muted)] mb-1">{t('currentVersion')}</p>
+                  <p className="text-[var(--text-primary)] font-mono text-sm font-medium">
                     {updateInfo.currentVersion || "unknown"}
                   </p>
                 </div>
-                <div className="rounded-xl bg-purple-500/10 border border-purple-500/20 p-3">
-                  <p className="text-[11px] uppercase tracking-wider text-purple-400/60 mb-1">Latest</p>
-                  <p className="text-purple-300 font-mono text-sm font-medium">
+                <div className="rounded-xl bg-[var(--surface-muted)] border border-[var(--surface-border)] p-3">
+                  <p className="text-[11px] uppercase tracking-wider text-[var(--text-secondary)]/60 mb-1">{t('latestVersion')}</p>
+                  <p className="text-[var(--text-primary)] font-mono text-sm font-medium">
                     {updateInfo.latestVersion || "latest"}
                   </p>
                 </div>
               </div>
 
               {updateInfo.releaseNotes && (
-                <div className="rounded-xl bg-white/5 border border-white/10 p-3">
-                  <p className="text-[11px] uppercase tracking-wider text-white/40 mb-2">What&apos;s New</p>
-                  <div className="prose prose-invert prose-xs max-w-none max-h-40 overflow-y-auto scrollbar-thin text-white/60 text-xs leading-relaxed [&_h1]:text-sm [&_h1]:font-semibold [&_h1]:text-white/80 [&_h2]:text-xs [&_h2]:font-semibold [&_h2]:text-white/80 [&_h3]:text-xs [&_h3]:font-semibold [&_h3]:text-white/70 [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_li]:my-0.5 [&_code]:bg-white/10 [&_code]:px-1 [&_code]:rounded [&_a]:text-blue-400 [&_a]:underline [&_p]:my-1">
+                <div className="rounded-xl bg-[var(--surface-muted)] border border-[var(--surface-border)] p-3">
+                  <p className="text-[11px] uppercase tracking-wider text-[var(--text-muted)] mb-2">{t('whatsNew')}</p>
+                  <div className="prose prose-xs max-w-none max-h-40 overflow-y-auto scrollbar-thin text-[var(--text-muted)] text-xs leading-relaxed [&_h1]:text-sm [&_h1]:font-semibold [&_h1]:text-[var(--text-secondary)] [&_h2]:text-xs [&_h2]:font-semibold [&_h2]:text-[var(--text-secondary)] [&_h3]:text-xs [&_h3]:font-semibold [&_h3]:text-[var(--text-secondary)] [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_li]:my-0.5 [&_code]:bg-[var(--surface-hover)] [&_code]:px-1 [&_code]:rounded [&_a]:text-blue-600 [&_a]:underline [&_p]:my-1">
                     <Markdown>{updateInfo.releaseNotes}</Markdown>
                   </div>
                 </div>
@@ -95,24 +97,24 @@ export function UpdateNotification() {
                 <div>
                   <label
                     htmlFor="version-select"
-                    className="block text-[11px] uppercase tracking-wider text-white/40 mb-2"
+                    className="block text-[11px] uppercase tracking-wider text-[var(--text-muted)] mb-2"
                   >
-                    Or select a specific version
+                    {t('selectVersion')}
                   </label>
                   <select
                     id="version-select"
                     value={selectedVersion || ""}
                     onChange={(e) => setSelectedVersion(e.target.value || null)}
-                    className="w-full rounded-lg bg-white/5 border border-white/10 text-white text-sm px-3 py-2 outline-none focus:border-purple-500/50 transition-colors"
+                    className="w-full rounded-lg bg-[var(--surface-muted)] border border-[var(--surface-border)] text-[var(--text-primary)] text-sm px-3 py-2 outline-none focus:border-[var(--accent)]/20 transition-colors"
                   >
-                    <option value="" className="bg-gray-900">
+                    <option value="" className="bg-[var(--surface-base)]">
                       Latest ({updateInfo.latestVersion || "latest"})
                     </option>
                     {updateInfo.availableVersions
                       .filter((v) => v !== updateInfo.latestVersion)
                       .slice(0, 10)
                       .map((version) => (
-                        <option key={version} value={version} className="bg-gray-900">
+                        <option key={version} value={version} className="bg-[var(--surface-base)]">
                           {version}
                         </option>
                       ))}
@@ -122,15 +124,15 @@ export function UpdateNotification() {
 
               {updateError && (
                 <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3">
-                  <p className="text-red-400 text-sm">{updateError}</p>
+                  <p className="text-red-600 text-sm">{updateError}</p>
                 </div>
               )}
 
               {isUpdating && (
-                <div className="rounded-lg bg-purple-500/10 border border-purple-500/20 p-3">
+                <div className="rounded-lg bg-[var(--surface-muted)] border border-[var(--surface-border)] p-3">
                   <div className="flex items-center gap-3">
                     <svg
-                      className="h-4 w-4 animate-spin text-purple-400"
+                      className="h-4 w-4 animate-spin text-[var(--text-secondary)]"
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"
@@ -151,8 +153,8 @@ export function UpdateNotification() {
                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
                       />
                     </svg>
-                    <p className="text-purple-300 text-sm">
-                      Updating to {targetVersion}... This may take a moment.
+                    <p className="text-[var(--text-primary)] text-sm">
+                      {t('updatingMessage', { targetVersion })}
                     </p>
                   </div>
                 </div>
@@ -162,10 +164,10 @@ export function UpdateNotification() {
 
           <ModalFooter>
             <Button variant="ghost" onClick={dismissUpdate} disabled={isUpdating}>
-              Later
+              {t('laterButton')}
             </Button>
             <Button variant="primary" onClick={handleUpdate} disabled={isUpdating}>
-              {isUpdating ? "Updating..." : `Update to ${targetVersion}`}
+              {isUpdating ? t('updatingButton') : t('updateToButton', { version: targetVersion })}
             </Button>
           </ModalFooter>
         </Modal>

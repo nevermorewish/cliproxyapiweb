@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useTranslations } from "next-intl";
 
 interface KeyUsage {
   keyName: string;
@@ -28,33 +29,34 @@ interface UsageTableProps {
 }
 
 export function UsageTable({ keys, isAdmin }: UsageTableProps) {
+  const t = useTranslations("usage");
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
 
   if (Object.keys(keys).length === 0) {
     return (
-      <section className="rounded-md border border-slate-700/70 bg-slate-900/25 p-6 text-center">
-        <p className="text-sm text-slate-400">No usage data yet</p>
+      <section className="rounded-md border border-[var(--surface-border)] bg-[var(--surface-base)] p-6 text-center">
+        <p className="text-sm text-[var(--text-muted)]">{t("noUsageData")}</p>
       </section>
     );
   }
 
   return (
     <section className="space-y-2">
-      <h2 className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">Usage by API Key</h2>
+      <h2 className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">{t("usageByApiKey")}</h2>
       <div className="overflow-x-auto">
-        <div className="min-w-[600px] rounded-md border border-slate-700/70 bg-slate-900/25">
+        <div className="min-w-[600px] rounded-md border border-[var(--surface-border)] bg-[var(--surface-base)]">
           <table className="w-full text-sm">
-          <thead className="sticky top-0 z-10 border-b border-slate-700/70 bg-slate-900/95 backdrop-blur-sm">
+          <thead className="sticky top-0 z-10 border-b border-[var(--surface-border)] bg-[var(--surface-base)]">
             <tr>
-              <th className="p-2 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400 w-8"></th>
-              <th className="p-2 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">Key Name</th>
+              <th className="p-2 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)] w-8"></th>
+              <th className="p-2 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">{t("keyName")}</th>
               {isAdmin && (
-                <th className="p-2 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">Username</th>
+                <th className="p-2 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">{t("username")}</th>
               )}
-              <th className="p-2 text-right text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">Total</th>
-              <th className="p-2 text-right text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">Success</th>
-              <th className="p-2 text-right text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">Failed</th>
-              <th className="p-2 text-right text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">Tokens</th>
+              <th className="p-2 text-right text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">{t("total")}</th>
+              <th className="p-2 text-right text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">{t("success")}</th>
+              <th className="p-2 text-right text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">{t("failed")}</th>
+              <th className="p-2 text-right text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">{t("tokens")}</th>
             </tr>
           </thead>
           <tbody>
@@ -65,7 +67,9 @@ export function UsageTable({ keys, isAdmin }: UsageTableProps) {
               return (
                 <React.Fragment key={authIndex}>
                   <tr
-                    className={`border-b border-slate-700/60 ${hasModels ? "cursor-pointer hover:bg-slate-800/40" : ""}`}
+                    className={`border-b border-[var(--surface-border)] ${hasModels ? "cursor-pointer hover:bg-[var(--surface-muted)]" : ""}`}
+                    tabIndex={hasModels ? 0 : undefined}
+                    aria-expanded={hasModels ? isExpanded : undefined}
                     onClick={() => {
                       if (hasModels) {
                         setExpandedKeys(prev => {
@@ -79,46 +83,60 @@ export function UsageTable({ keys, isAdmin }: UsageTableProps) {
                         });
                       }
                     }}
+                    onKeyDown={(e) => {
+                      if (hasModels && (e.key === "Enter" || e.key === " ")) {
+                        e.preventDefault();
+                        setExpandedKeys(prev => {
+                          const next = new Set(prev);
+                          if (next.has(authIndex)) {
+                            next.delete(authIndex);
+                          } else {
+                            next.add(authIndex);
+                          }
+                          return next;
+                        });
+                      }
+                    }}
                   >
-                    <td className="p-2 text-slate-400">
+                    <td className="p-2 text-[var(--text-muted)]">
                       {hasModels && (
                         <span className="text-xs">
                           {isExpanded ? "\u25BC" : "\u25B6"}
                         </span>
                       )}
                     </td>
-                    <td className="p-2 font-mono text-xs text-slate-200">{keyUsage.keyName}</td>
+                    <td className="p-2 font-mono text-xs text-[var(--text-primary)]">{keyUsage.keyName}</td>
                     {isAdmin && (
-                      <td className="p-2 text-xs text-slate-300">{keyUsage.username || "\u2014"}</td>
+                      <td className="p-2 text-xs text-[var(--text-secondary)]">{keyUsage.username || "\u2014"}</td>
                     )}
-                    <td className="p-2 text-right text-xs text-slate-300">{keyUsage.totalRequests.toLocaleString()}</td>
-                    <td className="p-2 text-right text-xs text-slate-300">{keyUsage.successCount.toLocaleString()}</td>
-                    <td className="p-2 text-right text-xs text-slate-300">{keyUsage.failureCount.toLocaleString()}</td>
-                    <td className="p-2 text-right text-xs text-slate-300">{keyUsage.totalTokens.toLocaleString()}</td>
+                    <td className="p-2 text-right text-xs text-[var(--text-secondary)]">{keyUsage.totalRequests.toLocaleString()}</td>
+                    <td className="p-2 text-right text-xs text-[var(--text-secondary)]">{keyUsage.successCount.toLocaleString()}</td>
+                    <td className="p-2 text-right text-xs text-[var(--text-secondary)]">{keyUsage.failureCount.toLocaleString()}</td>
+                    <td className="p-2 text-right text-xs text-[var(--text-secondary)]">{keyUsage.totalTokens.toLocaleString()}</td>
                   </tr>
 
                   {isExpanded && hasModels && (
                     <tr>
-                      <td colSpan={isAdmin ? 7 : 6} className="p-0 bg-slate-900/25">
+                      <td colSpan={isAdmin ? 7 : 6} className="p-0 bg-[var(--surface-base)]">
                         <div className="p-3 pl-8">
                           <table className="w-full text-xs">
-                            <thead className="border-b border-slate-700/60">
+                            <thead className="border-b border-[var(--surface-border)]">
                               <tr>
-                                <th className="p-2 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">Model</th>
-                                <th className="p-2 text-right text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">Requests</th>
-                                <th className="p-2 text-right text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">Input</th>
-                                <th className="p-2 text-right text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">Output</th>
-                                <th className="p-2 text-right text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">Total</th>
+                                <th className="p-2 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">{t("model")}</th>
+                                <th className="p-2 text-right text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">{t("requests")}</th>
+                                <th className="p-2 text-right text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">{t("input")}</th>
+                                <th className="p-2 text-right text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">{t("output")}</th>
+                                <th className="p-2 text-right text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">{t("total")}</th>
                               </tr>
                             </thead>
                             <tbody>
                               {Object.entries(keyUsage.models).map(([modelName, modelData]) => (
-                                <tr key={modelName} className="border-b border-slate-700/40 last:border-0">
-                                  <td className="p-2 text-left font-mono text-[11px] text-slate-300">{modelName}</td>
-                                  <td className="p-2 text-right text-slate-400">{modelData.totalRequests.toLocaleString()}</td>
-                                  <td className="p-2 text-right text-slate-400">{modelData.inputTokens.toLocaleString()}</td>
-                                  <td className="p-2 text-right text-slate-400">{modelData.outputTokens.toLocaleString()}</td>
-                                  <td className="p-2 text-right text-slate-400">{modelData.totalTokens.toLocaleString()}</td>
+                                <tr key={modelName} className="border-b border-[var(--surface-border)]/40 last:border-0">
+                                  <td className="p-2 text-left font-mono text-[11px] text-[var(--text-secondary)]">{modelName}</td>
+                                  <td className="p-2 text-right text-[var(--text-muted)]">{modelData.totalRequests.toLocaleString()}</td>
+                                  <td className="p-2 text-right text-[var(--text-muted)]">{modelData.inputTokens.toLocaleString()}</td>
+                                  <td className="p-2 text-right text-[var(--text-muted)]">{modelData.outputTokens.toLocaleString()}</td>
+                                  <td className="p-2 text-right text-[var(--text-muted)]">{modelData.totalTokens.toLocaleString()}</td>
                                 </tr>
                               ))}
                             </tbody>

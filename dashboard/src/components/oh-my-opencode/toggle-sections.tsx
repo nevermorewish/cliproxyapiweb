@@ -6,6 +6,7 @@ import type {
   BackgroundTaskConfig,
   GitMasterConfig,
   HookGroupName,
+  ExperimentalConfig,
   OhMyOpenCodeFullConfig,
   SisyphusAgentConfig,
   TmuxConfig,
@@ -24,9 +25,11 @@ import {
   HooksSection,
   LspServersSection,
   SisyphusSection,
+  AdvancedOptionsSection,
   TmuxSection,
   ToggleListSection,
 } from "./sections";
+import { useTranslations } from 'next-intl';
 
 interface ToggleSectionsProps {
   overrides: OhMyOpenCodeFullConfig;
@@ -48,6 +51,8 @@ interface ToggleSectionsProps {
   onModelConcurrencyRemove: (index: number) => void;
   onSisyphusToggle: (field: keyof SisyphusAgentConfig) => void;
   onGitMasterToggle: (field: keyof GitMasterConfig) => void;
+  onHashlineEditToggle: () => void;
+  onExperimentalToggle: (field: keyof ExperimentalConfig) => void;
   onBrowserProviderChange: (provider: string) => void;
   onMcpAdd: (mcp: string) => boolean;
   onMcpRemove: (mcp: string) => void;
@@ -75,12 +80,15 @@ export function ToggleSections({
   onModelConcurrencyRemove,
   onSisyphusToggle,
   onGitMasterToggle,
+  onHashlineEditToggle,
+  onExperimentalToggle,
   onBrowserProviderChange,
   onMcpAdd,
   onMcpRemove,
   onLspAdd,
   onLspRemove,
 }: ToggleSectionsProps) {
+  const t = useTranslations('ohMyOpenCode');
   const [showAgents, setShowAgents] = useState(false);
   const [showSkills, setShowSkills] = useState(false);
   const [showCommands, setShowCommands] = useState(false);
@@ -90,6 +98,7 @@ export function ToggleSections({
   const [showBgTask, setShowBgTask] = useState(false);
   const [showSisyphus, setShowSisyphus] = useState(false);
   const [showGitMaster, setShowGitMaster] = useState(false);
+  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
   const [showBrowser, setShowBrowser] = useState(false);
   const [showMcps, setShowMcps] = useState(false);
   const [mcpInput, setMcpInput] = useState("");
@@ -141,7 +150,7 @@ export function ToggleSections({
         <div className="flex flex-col md:flex-row gap-3">
           <div className="flex-1 space-y-3">
             <ToggleListSection
-              label="Agents"
+              label={t("agentsToggleLabel")}
               isExpanded={showAgents}
               onToggleExpand={() => setShowAgents(!showAgents)}
               items={AVAILABLE_AGENTS}
@@ -150,7 +159,7 @@ export function ToggleSections({
             />
 
             <ToggleListSection
-              label="Commands"
+              label={t("commandsToggleLabel")}
               isExpanded={showCommands}
               onToggleExpand={() => setShowCommands(!showCommands)}
               items={AVAILABLE_COMMANDS}
@@ -184,7 +193,7 @@ export function ToggleSections({
 
           <div className="flex-1 space-y-3">
             <ToggleListSection
-              label="Skills"
+              label={t("skillsToggleLabel")}
               isExpanded={showSkills}
               onToggleExpand={() => setShowSkills(!showSkills)}
               items={AVAILABLE_SKILLS}
@@ -221,6 +230,14 @@ export function ToggleSections({
               onToggleExpand={() => setShowGitMaster(!showGitMaster)}
               overrides={overrides}
               onGitMasterToggle={onGitMasterToggle}
+            />
+
+            <AdvancedOptionsSection
+              isExpanded={showAdvancedOptions}
+              onToggleExpand={() => setShowAdvancedOptions(!showAdvancedOptions)}
+              overrides={overrides}
+              onHashlineEditToggle={onHashlineEditToggle}
+              onExperimentalToggle={onExperimentalToggle}
             />
 
             <DisabledMcpsSection

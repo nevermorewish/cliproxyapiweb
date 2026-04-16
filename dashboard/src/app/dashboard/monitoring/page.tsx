@@ -1,12 +1,18 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import dynamic from "next/dynamic";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ServiceStatus } from "@/components/monitoring/service-status";
-import { UsageStats } from "@/components/monitoring/usage-stats";
+const UsageStats = dynamic(
+  () => import("@/components/monitoring/usage-stats").then(mod => ({ default: mod.UsageStats })),
+  { ssr: false, loading: () => <div className="h-64 animate-pulse rounded-lg bg-[var(--surface-muted)]" /> }
+);
 import { LiveLogs } from "@/components/monitoring/live-logs";
 import { API_ENDPOINTS } from "@/lib/api-endpoints";
 import { useProxyStatusProvider } from "@/components/dashboard-shell";
+
+import { useTranslations } from "next-intl";
 
 interface StatusResponse {
   running: boolean;
@@ -87,6 +93,7 @@ function parseLogLine(line: string, index: number): LogLine {
 }
 
 export default function MonitoringPage() {
+  const t = useTranslations("monitoring");
   const { provide: provideProxyStatus, clear: clearProxyStatus } = useProxyStatusProvider();
   const [status, setStatus] = useState<StatusResponse | null>(null);
   const [usage, setUsage] = useState<UsageResponse | null>(null);
@@ -162,11 +169,11 @@ export default function MonitoringPage() {
           }
         } else {
           setLoggingState(LOGGING_STATE.ERROR);
-          setLoggingError("Failed to check logging status");
+          setLoggingError(t("errorFailedCheckLogging"));
         }
       } catch {
         setLoggingState(LOGGING_STATE.ERROR);
-        setLoggingError("Could not reach the API to check logging status");
+        setLoggingError(t("errorCouldNotReachApi"));
       }
     };
 
@@ -202,7 +209,7 @@ export default function MonitoringPage() {
           }
         } else {
           setLoggingState(LOGGING_STATE.ERROR);
-          setLoggingError(`Logs request failed with status ${res.status}`);
+          setLoggingError(t("errorLogsRequestFailed", { status: res.status }));
           if (logsIntervalRef.current) {
             clearInterval(logsIntervalRef.current);
             logsIntervalRef.current = null;
@@ -210,7 +217,7 @@ export default function MonitoringPage() {
         }
       } catch {
         setLoggingState(LOGGING_STATE.ERROR);
-        setLoggingError("Network error while fetching logs");
+        setLoggingError(t("errorNetworkFetchLogs"));
         if (logsIntervalRef.current) {
           clearInterval(logsIntervalRef.current);
           logsIntervalRef.current = null;
@@ -244,10 +251,10 @@ export default function MonitoringPage() {
         setLogs([]);
         lastTimestampRef.current = 0;
       } else {
-        setLoggingError("Failed to enable logging");
+        setLoggingError(t("errorFailedEnableLogging"));
       }
     } catch {
-      setLoggingError("Network error while enabling logging");
+      setLoggingError(t("errorNetworkEnableLogging"));
     } finally {
       setEnablingLogging(false);
     }
@@ -271,11 +278,11 @@ export default function MonitoringPage() {
           }
         } else {
           setLoggingState(LOGGING_STATE.ERROR);
-          setLoggingError("Failed to check logging status");
+          setLoggingError(t("errorFailedCheckLogging"));
         }
       } catch {
         setLoggingState(LOGGING_STATE.ERROR);
-        setLoggingError("Could not reach the API");
+        setLoggingError(t("errorCouldNotReachApiShort"));
       }
     };
 
@@ -306,8 +313,8 @@ export default function MonitoringPage() {
 
   return (
     <div className="space-y-4">
-      <section className="rounded-lg border border-slate-700/70 bg-slate-900/40 p-4">
-        <h1 className="text-xl font-semibold tracking-tight text-slate-100">Monitoring</h1>
+      <section className="rounded-lg border border-[var(--surface-border)] bg-[var(--surface-base)] p-4">
+        <h1 className="text-xl font-semibold tracking-tight text-[var(--text-primary)]">{t("pageTitle")}</h1>
       </section>
 
       <ServiceStatus
@@ -320,10 +327,10 @@ export default function MonitoringPage() {
         isOpen={showConfirm}
         onClose={() => setShowConfirm(false)}
         onConfirm={handleRestart}
-        title="Restart Service"
-        message="Are you sure you want to restart the CLIProxyAPI service?"
-        confirmLabel="Restart"
-        cancelLabel="Cancel"
+        title={t("confirmRestartTitle")}
+        message={t("confirmRestartMessage")}
+        confirmLabel={t("confirmRestartButton")}
+        cancelLabel={t("cancelButton")}
         variant="warning"
       />
 

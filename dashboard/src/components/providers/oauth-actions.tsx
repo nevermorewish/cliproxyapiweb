@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { OAuthProviderId } from "@/components/providers/oauth-section";
@@ -21,23 +22,25 @@ export function OAuthActions({
   onConnect,
   onImport,
 }: OAuthActionsProps) {
+  const t = useTranslations("providers");
+
   return (
     <>
       <div>
-        <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">Connect New Account</h3>
+        <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">{t("connectNewAccount")}</h3>
       </div>
-      <div className="overflow-hidden rounded-md border border-slate-700/70 bg-slate-900/25">
+      <div className="overflow-hidden rounded-md border border-[var(--surface-border)] bg-[var(--surface-base)]">
         {providers.map((provider, index) => (
           <div
             key={provider.id}
             className={cn(
               "flex items-center justify-between gap-3 px-3 py-2.5",
-              index !== providers.length - 1 && "border-b border-slate-700/70"
+              index !== providers.length - 1 && "border-b border-[var(--surface-border)]"
             )}
           >
             <div className="space-y-1">
-              <div className="text-sm font-medium text-slate-100">{provider.name}</div>
-              <p className="text-xs leading-relaxed text-slate-400">{provider.description}</p>
+              <div className="text-sm font-medium text-[var(--text-primary)]">{provider.name}</div>
+              <p className="text-xs leading-relaxed text-[var(--text-muted)]">{provider.description}</p>
             </div>
             <div className="flex shrink-0 items-center gap-1.5">
               <Button
@@ -45,14 +48,14 @@ export function OAuthActions({
                 onClick={() => onConnect(provider.id)}
                 className="shrink-0 px-2.5 py-1 text-xs"
               >
-                Connect
+                {t("connectButton")}
               </Button>
               <Button
                 variant="secondary"
                 onClick={() => onImport(provider.id)}
                 className="shrink-0 px-2.5 py-1 text-xs"
               >
-                Import JSON
+                {t("importJsonButton")}
               </Button>
             </div>
           </div>
